@@ -149,11 +149,13 @@ void vis::SpectrumTransformer::execute(pcm_stereo_sample *buffer,
             create_bar_row_msg(m_settings->get_spectrum_character(),
                                m_settings->get_spectrum_bar_width());
 
-        auto number_of_bars = std::max(
-            static_cast<uint32_t>(std::floor(
-                static_cast<uint32_t>(width) /
-                (bar_row_msg.size() + m_settings->get_spectrum_bar_spacing()))),
-            1u);
+        const auto bar_width = static_cast<uint32_t>(bar_row_msg.size());
+        const auto bar_spacing = m_settings->get_spectrum_bar_spacing();
+        const auto bar_stride = bar_width + bar_spacing;
+
+        // Only gaps between bars consume spacing; the final bar does not need
+        // trailing spacing to fit inside the terminal width.
+        auto number_of_bars = std::max((static_cast<uint32_t>(width) + bar_spacing) / bar_stride, 1u);
 
         fftw_execute(m_fftw_plan_left);
 
