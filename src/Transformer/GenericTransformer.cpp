@@ -21,12 +21,14 @@ void vis::GenericTransformer::recalculate_colors(
 {
     if (max != precomputed_colors->size())
     {
+        precomputed_colors->clear();
         precomputed_colors->reserve(max);
         for (size_t i = 0ul; i < max; ++i)
         {
-            (*precomputed_colors)[i] =
+            precomputed_colors->push_back(
                 writer->to_color_pair(static_cast<int32_t>(i),
-                                      static_cast<int32_t>(max), colors, true);
+                                      static_cast<int32_t>(max), colors,
+                                      true));
         }
     }
 }
