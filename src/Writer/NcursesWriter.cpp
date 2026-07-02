@@ -121,6 +121,20 @@ void vis::NcursesWriter::write(const int32_t row, const int32_t column,
     }
 }
 
+void vis::NcursesWriter::write_text(const int32_t row, const int32_t column,
+                                    const vis::ColorDefinition color,
+                                    const std::wstring &msg)
+{
+    write_foreground(row, column, color, msg);
+}
+
+void vis::NcursesWriter::clear_line(const int32_t row, const int32_t column)
+{
+    standend();
+    move(row, column);
+    clrtoeol();
+}
+
 void vis::NcursesWriter::clear()
 {
     standend();

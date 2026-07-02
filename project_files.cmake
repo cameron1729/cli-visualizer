@@ -5,6 +5,10 @@ SET( VIS_PROJECT_HEADER_FILES
     ${CMAKE_SOURCE_DIR}/src/Domain/VisConstants.h
     ${CMAKE_SOURCE_DIR}/src/Domain/VisException.h
     ${CMAKE_SOURCE_DIR}/src/Domain/VisTypes.h
+    ${CMAKE_SOURCE_DIR}/src/Overlay/AudioOutputInfo.h
+    ${CMAKE_SOURCE_DIR}/src/Overlay/OverlayMetadata.h
+    ${CMAKE_SOURCE_DIR}/src/Overlay/OverlayRenderer.h
+    ${CMAKE_SOURCE_DIR}/src/Overlay/OverlaySource.h
     ${CMAKE_SOURCE_DIR}/src/Source/AudioSource.h
     ${CMAKE_SOURCE_DIR}/src/Source/MpdAudioSource.h
     ${CMAKE_SOURCE_DIR}/src/Source/PortAudioSource.h
@@ -27,6 +31,10 @@ SET( VIS_PROJECT_SOURCE_FILES
     ${CMAKE_SOURCE_DIR}/src/Domain/ColorDefinition.cpp
     ${CMAKE_SOURCE_DIR}/src/Domain/Settings.cpp
     ${CMAKE_SOURCE_DIR}/src/Domain/VisException.cpp
+    ${CMAKE_SOURCE_DIR}/src/Overlay/AudioOutputInfo.cpp
+    ${CMAKE_SOURCE_DIR}/src/Overlay/OverlayMetadata.cpp
+    ${CMAKE_SOURCE_DIR}/src/Overlay/OverlayRenderer.cpp
+    ${CMAKE_SOURCE_DIR}/src/Overlay/OverlaySource.cpp
     ${CMAKE_SOURCE_DIR}/src/Source/AudioSource.cpp
     ${CMAKE_SOURCE_DIR}/src/Source/MpdAudioSource.cpp
     ${CMAKE_SOURCE_DIR}/src/Source/PortAudioSource.cpp
@@ -48,6 +56,7 @@ SET( VIS_PROJECT_SOURCE_FILES
 
 SET( VIS_PROJECT_TEST_FILES
     ${CMAKE_SOURCE_DIR}/tests/ConfigurationUtilsTest.cpp
+    ${CMAKE_SOURCE_DIR}/tests/OverlayMetadataTest.cpp
     ${CMAKE_SOURCE_DIR}/tests/run_tests.cpp
     ${CMAKE_SOURCE_DIR}/tests/UtilsTest.cpp
 )

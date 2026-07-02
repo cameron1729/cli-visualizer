@@ -44,10 +44,12 @@ vis::Visualizer::Visualizer(const std::string &config_path,
                             const std::locale &loc)
     : m_settings{std::make_shared<vis::Settings>(config_path)},
       m_current_color_scheme_index{0}, m_current_transformer_index{0},
+      m_overlay_source{std::make_shared<vis::OverlaySource>()},
       m_shutdown{false}, m_signal_handlers_setup{false}, m_loc{loc},
       m_pcm_buffer{nullptr}
 {
     vis::ConfigurationUtils::load_settings(m_settings, config_path, loc);
+    m_overlay_source->configure(m_settings);
     g_vis = this;
 }
 
@@ -173,8 +175,11 @@ void vis::Visualizer::run()
         // before trying again
         else
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(
-                VisConstants::k_silent_sleep_milliseconds));
+            if (!transformer->execute_idle(m_writer.get()))
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(
+                    VisConstants::k_silent_sleep_milliseconds));
+            }
         }
 
         rotate_transformer(m_settings->get_rotation_interval(),
@@ -288,6 +293,7 @@ void vis::Visualizer::reload_config()
     vis::ConfigurationUtils::load_settings(m_settings, config_path, m_loc);
 
     m_settings->set_scaling_multiplier(scaling_multiplier);
+    m_overlay_source->configure(m_settings);
 
     setup_transformers();
 
@@ -326,7 +332,8 @@ void vis::Visualizer::setup_transformers()
         if (visualizer == VisConstants::k_spectrum_visualizer_name)
         {
             m_transformers.emplace_back(
-                std::make_unique<SpectrumTransformer>(m_settings, visualizer));
+                std::make_unique<SpectrumTransformer>(
+                    m_settings, visualizer, m_overlay_source));
         }
         else if (visualizer == VisConstants::k_spectrum_circle_visualizer_name)
         {

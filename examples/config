@@ -65,6 +65,36 @@
 ##Reverses the direction of the spectrum so that high freqs are first and low freqs last. Defaults to false.
 #visualizer.spectrum.reversed=false
 
+##Optional metadata overlay. The command should print one flat JSON object with fields:
+##title, category, playback, position_ms, duration_ms.
+#visualizer.overlay.enabled=true
+#visualizer.overlay.command=bgv status --json
+#visualizer.overlay.poll.ms=1000
+
+##Draw a scrolling title behind the spectrum bars.
+#visualizer.overlay.marquee.enabled=true
+#visualizer.overlay.marquee.row=0
+#visualizer.overlay.marquee.speed=8
+#visualizer.overlay.marquee.gap=12
+#visualizer.overlay.marquee.boundary.enabled=true
+#visualizer.overlay.marquee.boundary.left=[
+#visualizer.overlay.marquee.boundary.right=]
+
+##Draw playback status and progress behind the spectrum bars.
+#visualizer.overlay.progress.enabled=true
+#visualizer.overlay.progress.row=1
+#visualizer.overlay.progress.align=right
+#visualizer.overlay.progress.width=18
+#visualizer.overlay.progress.status.enabled=true
+#visualizer.overlay.progress.time.enabled=true
+#visualizer.overlay.progress.filled=▰
+#visualizer.overlay.progress.empty=▱
+#visualizer.overlay.status.headphones.icon=🎧
+#visualizer.overlay.status.speakers.icon=🔊
+#visualizer.overlay.status.playing.icon=▶
+#visualizer.overlay.status.paused.icon=
+#visualizer.overlay.status.stopped.icon=⏹
+
 ##This configures the sgs smoothing effect on the spectrum visualizer. More points spreads out the smoothing
 ##effect and increasing passes runs the smoother multiple times on reach run. Defaults are points=3 and passes=1
 #visualizer.sgs.smoothing.points=3

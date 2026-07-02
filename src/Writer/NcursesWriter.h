@@ -37,6 +37,11 @@ class NcursesWriter
     virtual void write(int32_t row, int32_t column, ColorDefinition color,
                        const std::wstring &msg, wchar_t character);
 
+    virtual void write_text(int32_t row, int32_t column, ColorDefinition color,
+                            const std::wstring &msg);
+
+    virtual void clear_line(int32_t row, int32_t column);
+
     virtual void clear();
 
     /**

@@ -8,9 +8,13 @@
 #ifndef _SPECTRUM_TRANSFORMER_H
 #define _SPECTRUM_TRANSFORMER_H
 
+#include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "Domain/Settings.h"
+#include "Overlay/OverlayRenderer.h"
+#include "Overlay/OverlaySource.h"
 #include "Transformer/GenericTransformer.h"
 #include "Writer/NcursesWriter.h"
 #include <fftw3.h>
@@ -23,7 +27,8 @@ class SpectrumTransformer : public GenericTransformer
   public:
     explicit SpectrumTransformer(
         const std::shared_ptr<const vis::Settings> settings,
-        const std::string &name);
+        const std::string &name,
+        std::shared_ptr<vis::OverlaySource> overlay_source = nullptr);
 
     SpectrumTransformer(const SpectrumTransformer &other) = delete;
 
@@ -39,6 +44,7 @@ class SpectrumTransformer : public GenericTransformer
                       vis::NcursesWriter *writer) override;
     void execute_stereo(pcm_stereo_sample *buffer,
                         vis::NcursesWriter *writer) override;
+    bool execute_idle(vis::NcursesWriter *writer) override;
 
     void clear_colors() override
     {
@@ -48,7 +54,21 @@ class SpectrumTransformer : public GenericTransformer
   private:
     void execute(pcm_stereo_sample *buffer, vis::NcursesWriter *writer,
                  bool is_stereo);
+    bool draw_overlay(
+        vis::NcursesWriter *writer,
+        const std::vector<std::vector<uint8_t>> *occupied_cells = nullptr);
+    bool has_drawable_overlay() const;
+    bool draw_cached_frame(vis::NcursesWriter *writer, bool is_stereo);
+    uint64_t cached_frame_sleep_milliseconds() const;
+    void decay_cached_bars(std::vector<double> *bars,
+                           std::vector<double> *falloff_bars,
+                           uint32_t number_of_bars) const;
+    void mark_occupied_cells(
+        std::vector<std::vector<uint8_t>> *occupied_cells, int32_t row,
+        int32_t column, int32_t width) const;
     const std::shared_ptr<const Settings> m_settings;
+    std::shared_ptr<vis::OverlaySource> m_overlay_source;
+    vis::OverlayRenderer m_overlay_renderer;
 
     /** --- BEGIN MEMBER VARIABLES --- */
 
@@ -181,7 +201,9 @@ class SpectrumTransformer : public GenericTransformer
                            const std::vector<double> &bars_falloff,
                            int32_t win_height, bool flipped,
                            const std::wstring &bar_row_msg,
-                           vis::NcursesWriter *writer);
+                           vis::NcursesWriter *writer,
+                           std::vector<std::vector<uint8_t>>
+                               *occupied_cells = nullptr);
 
     /**
      * Scaling the given vector of points "bars" to a fit a screen with a window

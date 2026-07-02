@@ -34,6 +34,12 @@ class GenericTransformer
     virtual void execute_mono(pcm_stereo_sample *buffer,
                               vis::NcursesWriter *writer) = 0;
 
+    virtual bool execute_idle(vis::NcursesWriter *writer)
+    {
+        (void)writer;
+        return false;
+    }
+
     virtual void clear_colors() = 0;
 
     const inline std::string &get_name()

@@ -81,6 +81,50 @@ const std::string k_sgs_smoothing_points_setting{
     "visualizer.sgs.smoothing.points"};
 const std::string k_sgs_smoothing_passes_setting{
     "visualizer.sgs.smoothing.passes"};
+
+const std::string k_overlay_enabled_setting{"visualizer.overlay.enabled"};
+const std::string k_overlay_command_setting{"visualizer.overlay.command"};
+const std::string k_overlay_poll_ms_setting{"visualizer.overlay.poll.ms"};
+const std::string k_overlay_marquee_enabled_setting{
+    "visualizer.overlay.marquee.enabled"};
+const std::string k_overlay_marquee_row_setting{
+    "visualizer.overlay.marquee.row"};
+const std::string k_overlay_marquee_speed_setting{
+    "visualizer.overlay.marquee.speed"};
+const std::string k_overlay_marquee_gap_setting{
+    "visualizer.overlay.marquee.gap"};
+const std::string k_overlay_marquee_boundary_enabled_setting{
+    "visualizer.overlay.marquee.boundary.enabled"};
+const std::string k_overlay_marquee_boundary_left_setting{
+    "visualizer.overlay.marquee.boundary.left"};
+const std::string k_overlay_marquee_boundary_right_setting{
+    "visualizer.overlay.marquee.boundary.right"};
+const std::string k_overlay_progress_enabled_setting{
+    "visualizer.overlay.progress.enabled"};
+const std::string k_overlay_progress_row_setting{
+    "visualizer.overlay.progress.row"};
+const std::string k_overlay_progress_width_setting{
+    "visualizer.overlay.progress.width"};
+const std::string k_overlay_progress_align_setting{
+    "visualizer.overlay.progress.align"};
+const std::string k_overlay_progress_status_enabled_setting{
+    "visualizer.overlay.progress.status.enabled"};
+const std::string k_overlay_progress_time_enabled_setting{
+    "visualizer.overlay.progress.time.enabled"};
+const std::string k_overlay_progress_filled_setting{
+    "visualizer.overlay.progress.filled"};
+const std::string k_overlay_progress_empty_setting{
+    "visualizer.overlay.progress.empty"};
+const std::string k_overlay_status_headphones_icon_setting{
+    "visualizer.overlay.status.headphones.icon"};
+const std::string k_overlay_status_speakers_icon_setting{
+    "visualizer.overlay.status.speakers.icon"};
+const std::string k_overlay_status_playing_icon_setting{
+    "visualizer.overlay.status.playing.icon"};
+const std::string k_overlay_status_paused_icon_setting{
+    "visualizer.overlay.status.paused.icon"};
+const std::string k_overlay_status_stopped_icon_setting{
+    "visualizer.overlay.status.stopped.icon"};
 } // namespace
 
 std::unordered_map<std::string, std::wstring>
@@ -753,6 +797,104 @@ void vis::ConfigurationUtils::load_settings(
     settings->set_color_schemes(Utils::split(
         Utils::get(properties, k_color_scheme_path_setting, std::string{""}),
         ','));
+
+    settings->set_overlay_enabled(
+        Utils::get(properties, k_overlay_enabled_setting,
+                   VisConstants::k_default_overlay_enabled));
+
+    settings->set_overlay_command(
+        Utils::get(properties, k_overlay_command_setting,
+                   VisConstants::k_default_overlay_command));
+
+    settings->set_overlay_poll_ms(
+        Utils::get(properties, k_overlay_poll_ms_setting,
+                   VisConstants::k_default_overlay_poll_ms));
+    validate_setting_is_greater_than_zero(settings->get_overlay_poll_ms(),
+                                          k_overlay_poll_ms_setting);
+
+    settings->set_overlay_marquee_enabled(
+        Utils::get(properties, k_overlay_marquee_enabled_setting,
+                   VisConstants::k_default_overlay_marquee_enabled));
+
+    settings->set_overlay_marquee_row(
+        Utils::get(properties, k_overlay_marquee_row_setting,
+                   VisConstants::k_default_overlay_marquee_row));
+
+    settings->set_overlay_marquee_speed(
+        Utils::get(properties, k_overlay_marquee_speed_setting,
+                   VisConstants::k_default_overlay_marquee_speed));
+    validate_setting_is_not_negative(settings->get_overlay_marquee_speed(),
+                                     k_overlay_marquee_speed_setting);
+
+    settings->set_overlay_marquee_gap(
+        Utils::get(properties, k_overlay_marquee_gap_setting,
+                   VisConstants::k_default_overlay_marquee_gap));
+
+    settings->set_overlay_marquee_boundary_enabled(
+        Utils::get(properties, k_overlay_marquee_boundary_enabled_setting,
+                   VisConstants::k_default_overlay_marquee_boundary_enabled));
+
+    settings->set_overlay_marquee_boundary_left(
+        Utils::get(properties, k_overlay_marquee_boundary_left_setting,
+                   VisConstants::k_default_overlay_marquee_boundary_left));
+
+    settings->set_overlay_marquee_boundary_right(
+        Utils::get(properties, k_overlay_marquee_boundary_right_setting,
+                   VisConstants::k_default_overlay_marquee_boundary_right));
+
+    settings->set_overlay_progress_enabled(
+        Utils::get(properties, k_overlay_progress_enabled_setting,
+                   VisConstants::k_default_overlay_progress_enabled));
+
+    settings->set_overlay_progress_row(
+        Utils::get(properties, k_overlay_progress_row_setting,
+                   VisConstants::k_default_overlay_progress_row));
+
+    settings->set_overlay_progress_width(
+        Utils::get(properties, k_overlay_progress_width_setting,
+                   VisConstants::k_default_overlay_progress_width));
+    validate_setting_is_greater_than_zero(settings->get_overlay_progress_width(),
+                                          k_overlay_progress_width_setting);
+
+    settings->set_overlay_progress_align(
+        Utils::get(properties, k_overlay_progress_align_setting,
+                   VisConstants::k_default_overlay_progress_align));
+
+    settings->set_overlay_progress_status_enabled(
+        Utils::get(properties, k_overlay_progress_status_enabled_setting,
+                   VisConstants::k_default_overlay_progress_status_enabled));
+
+    settings->set_overlay_progress_time_enabled(
+        Utils::get(properties, k_overlay_progress_time_enabled_setting,
+                   VisConstants::k_default_overlay_progress_time_enabled));
+
+    settings->set_overlay_progress_filled(
+        Utils::get(properties, k_overlay_progress_filled_setting,
+                   VisConstants::k_default_overlay_progress_filled));
+
+    settings->set_overlay_progress_empty(
+        Utils::get(properties, k_overlay_progress_empty_setting,
+                   VisConstants::k_default_overlay_progress_empty));
+
+    settings->set_overlay_status_headphones_icon(
+        Utils::get(properties, k_overlay_status_headphones_icon_setting,
+                   VisConstants::k_default_overlay_status_headphones_icon));
+
+    settings->set_overlay_status_speakers_icon(
+        Utils::get(properties, k_overlay_status_speakers_icon_setting,
+                   VisConstants::k_default_overlay_status_speakers_icon));
+
+    settings->set_overlay_status_playing_icon(
+        Utils::get(properties, k_overlay_status_playing_icon_setting,
+                   VisConstants::k_default_overlay_status_playing_icon));
+
+    settings->set_overlay_status_paused_icon(
+        Utils::get(properties, k_overlay_status_paused_icon_setting,
+                   VisConstants::k_default_overlay_status_paused_icon));
+
+    settings->set_overlay_status_stopped_icon(
+        Utils::get(properties, k_overlay_status_stopped_icon_setting,
+                   VisConstants::k_default_overlay_status_stopped_icon));
 
     const auto visualizers =
         Utils::split(Utils::get(properties, k_visualizers_setting,

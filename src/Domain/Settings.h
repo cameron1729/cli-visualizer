@@ -355,6 +355,246 @@ class Settings
         return m_color_schemes;
     }
 
+    bool is_overlay_enabled() const noexcept
+    {
+        return m_overlay_enabled;
+    }
+
+    void set_overlay_enabled(bool overlay_enabled)
+    {
+        m_overlay_enabled = overlay_enabled;
+    }
+
+    const std::string &get_overlay_command() const noexcept
+    {
+        return m_overlay_command;
+    }
+
+    void set_overlay_command(const std::string &overlay_command)
+    {
+        m_overlay_command = overlay_command;
+    }
+
+    uint32_t get_overlay_poll_ms() const noexcept
+    {
+        return m_overlay_poll_ms;
+    }
+
+    void set_overlay_poll_ms(uint32_t overlay_poll_ms)
+    {
+        m_overlay_poll_ms = overlay_poll_ms;
+    }
+
+    bool is_overlay_marquee_enabled() const noexcept
+    {
+        return m_overlay_marquee_enabled;
+    }
+
+    void set_overlay_marquee_enabled(bool overlay_marquee_enabled)
+    {
+        m_overlay_marquee_enabled = overlay_marquee_enabled;
+    }
+
+    uint32_t get_overlay_marquee_row() const noexcept
+    {
+        return m_overlay_marquee_row;
+    }
+
+    void set_overlay_marquee_row(uint32_t overlay_marquee_row)
+    {
+        m_overlay_marquee_row = overlay_marquee_row;
+    }
+
+    double get_overlay_marquee_speed() const noexcept
+    {
+        return m_overlay_marquee_speed;
+    }
+
+    void set_overlay_marquee_speed(double overlay_marquee_speed)
+    {
+        m_overlay_marquee_speed = overlay_marquee_speed;
+    }
+
+    uint32_t get_overlay_marquee_gap() const noexcept
+    {
+        return m_overlay_marquee_gap;
+    }
+
+    void set_overlay_marquee_gap(uint32_t overlay_marquee_gap)
+    {
+        m_overlay_marquee_gap = overlay_marquee_gap;
+    }
+
+    bool is_overlay_marquee_boundary_enabled() const noexcept
+    {
+        return m_overlay_marquee_boundary_enabled;
+    }
+
+    void set_overlay_marquee_boundary_enabled(
+        bool overlay_marquee_boundary_enabled)
+    {
+        m_overlay_marquee_boundary_enabled = overlay_marquee_boundary_enabled;
+    }
+
+    const std::wstring &get_overlay_marquee_boundary_left() const noexcept
+    {
+        return m_overlay_marquee_boundary_left;
+    }
+
+    void set_overlay_marquee_boundary_left(
+        const std::wstring &overlay_marquee_boundary_left)
+    {
+        m_overlay_marquee_boundary_left = overlay_marquee_boundary_left;
+    }
+
+    const std::wstring &get_overlay_marquee_boundary_right() const noexcept
+    {
+        return m_overlay_marquee_boundary_right;
+    }
+
+    void set_overlay_marquee_boundary_right(
+        const std::wstring &overlay_marquee_boundary_right)
+    {
+        m_overlay_marquee_boundary_right = overlay_marquee_boundary_right;
+    }
+
+    bool is_overlay_progress_enabled() const noexcept
+    {
+        return m_overlay_progress_enabled;
+    }
+
+    void set_overlay_progress_enabled(bool overlay_progress_enabled)
+    {
+        m_overlay_progress_enabled = overlay_progress_enabled;
+    }
+
+    uint32_t get_overlay_progress_row() const noexcept
+    {
+        return m_overlay_progress_row;
+    }
+
+    void set_overlay_progress_row(uint32_t overlay_progress_row)
+    {
+        m_overlay_progress_row = overlay_progress_row;
+    }
+
+    uint32_t get_overlay_progress_width() const noexcept
+    {
+        return m_overlay_progress_width;
+    }
+
+    void set_overlay_progress_width(uint32_t overlay_progress_width)
+    {
+        m_overlay_progress_width = overlay_progress_width;
+    }
+
+    const std::string &get_overlay_progress_align() const noexcept
+    {
+        return m_overlay_progress_align;
+    }
+
+    void set_overlay_progress_align(const std::string &overlay_progress_align)
+    {
+        m_overlay_progress_align = overlay_progress_align;
+    }
+
+    bool is_overlay_progress_status_enabled() const noexcept
+    {
+        return m_overlay_progress_status_enabled;
+    }
+
+    void set_overlay_progress_status_enabled(
+        bool overlay_progress_status_enabled)
+    {
+        m_overlay_progress_status_enabled = overlay_progress_status_enabled;
+    }
+
+    bool is_overlay_progress_time_enabled() const noexcept
+    {
+        return m_overlay_progress_time_enabled;
+    }
+
+    void set_overlay_progress_time_enabled(bool overlay_progress_time_enabled)
+    {
+        m_overlay_progress_time_enabled = overlay_progress_time_enabled;
+    }
+
+    const std::wstring &get_overlay_progress_filled() const noexcept
+    {
+        return m_overlay_progress_filled;
+    }
+
+    void set_overlay_progress_filled(
+        const std::wstring &overlay_progress_filled)
+    {
+        m_overlay_progress_filled = overlay_progress_filled;
+    }
+
+    const std::wstring &get_overlay_progress_empty() const noexcept
+    {
+        return m_overlay_progress_empty;
+    }
+
+    void set_overlay_progress_empty(const std::wstring &overlay_progress_empty)
+    {
+        m_overlay_progress_empty = overlay_progress_empty;
+    }
+
+    const std::wstring &get_overlay_status_headphones_icon() const noexcept
+    {
+        return m_overlay_status_headphones_icon;
+    }
+
+    void set_overlay_status_headphones_icon(
+        const std::wstring &overlay_status_headphones_icon)
+    {
+        m_overlay_status_headphones_icon = overlay_status_headphones_icon;
+    }
+
+    const std::wstring &get_overlay_status_speakers_icon() const noexcept
+    {
+        return m_overlay_status_speakers_icon;
+    }
+
+    void set_overlay_status_speakers_icon(
+        const std::wstring &overlay_status_speakers_icon)
+    {
+        m_overlay_status_speakers_icon = overlay_status_speakers_icon;
+    }
+
+    const std::wstring &get_overlay_status_playing_icon() const noexcept
+    {
+        return m_overlay_status_playing_icon;
+    }
+
+    void set_overlay_status_playing_icon(
+        const std::wstring &overlay_status_playing_icon)
+    {
+        m_overlay_status_playing_icon = overlay_status_playing_icon;
+    }
+
+    const std::wstring &get_overlay_status_paused_icon() const noexcept
+    {
+        return m_overlay_status_paused_icon;
+    }
+
+    void set_overlay_status_paused_icon(
+        const std::wstring &overlay_status_paused_icon)
+    {
+        m_overlay_status_paused_icon = overlay_status_paused_icon;
+    }
+
+    const std::wstring &get_overlay_status_stopped_icon() const noexcept
+    {
+        return m_overlay_status_stopped_icon;
+    }
+
+    void set_overlay_status_stopped_icon(
+        const std::wstring &overlay_status_stopped_icon)
+    {
+        m_overlay_status_stopped_icon = overlay_status_stopped_icon;
+    }
+
     void set_config_path(const std::string &config_path)
     {
         m_config_path = config_path;
@@ -401,6 +641,29 @@ class Settings
     std::string m_port_audio_source;
     std::string m_pulse_audio_source;
     std::vector<std::string> m_color_schemes;
+    bool m_overlay_enabled;
+    std::string m_overlay_command;
+    uint32_t m_overlay_poll_ms;
+    bool m_overlay_marquee_enabled;
+    uint32_t m_overlay_marquee_row;
+    double m_overlay_marquee_speed;
+    uint32_t m_overlay_marquee_gap;
+    bool m_overlay_marquee_boundary_enabled;
+    std::wstring m_overlay_marquee_boundary_left;
+    std::wstring m_overlay_marquee_boundary_right;
+    bool m_overlay_progress_enabled;
+    uint32_t m_overlay_progress_row;
+    uint32_t m_overlay_progress_width;
+    std::string m_overlay_progress_align;
+    bool m_overlay_progress_status_enabled;
+    bool m_overlay_progress_time_enabled;
+    std::wstring m_overlay_progress_filled;
+    std::wstring m_overlay_progress_empty;
+    std::wstring m_overlay_status_headphones_icon;
+    std::wstring m_overlay_status_speakers_icon;
+    std::wstring m_overlay_status_playing_icon;
+    std::wstring m_overlay_status_paused_icon;
+    std::wstring m_overlay_status_stopped_icon;
     std::string m_config_path;
 };
 } // namespace vis

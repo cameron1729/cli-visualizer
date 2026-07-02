@@ -8,7 +8,9 @@
 #ifndef _SPECTRUM_CIRCLE_TRANSFORMER_H
 #define _SPECTRUM_CIRCLE_TRANSFORMER_H
 
+#include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "Domain/Settings.h"
 #include "Transformer/SpectrumTransformer.h"
@@ -56,7 +58,9 @@ class SpectrumCircleTransformer : public SpectrumTransformer
     void draw_bars(const std::vector<double> &bars,
                    const std::vector<double> &bars_falloff, int32_t win_height,
                    bool flipped, const std::wstring &bar_row_msg,
-                   vis::NcursesWriter *writer) override;
+                   vis::NcursesWriter *writer,
+                   std::vector<std::vector<uint8_t>>
+                       *occupied_cells = nullptr) override;
 
     /** --- END MEMBER FUNCTIONS --- */
 };

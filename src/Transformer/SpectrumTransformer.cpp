@@ -20,6 +20,7 @@
 #include <iostream>
 #include <numeric>
 #include <thread>
+#include <utility>
 
 namespace
 {
@@ -31,14 +32,17 @@ const double k_deviation_amount_to_reset =
          // max height averages to trigger an auto scaling reset
 
 const double k_minimum_bar_height = 0.125;
+const double k_silence_sample_threshold = 256.0;
 const uint64_t k_max_silent_runs_before_sleep =
     3000ul / VisConstants::k_silent_sleep_milliseconds; // silent for 3 seconds
+const uint64_t k_overlay_fall_frame_sleep_milliseconds = 25;
 } // namespace
 
 vis::SpectrumTransformer::SpectrumTransformer(
     const std::shared_ptr<const vis::Settings> settings,
-    const std::string &name)
-    : GenericTransformer(name), m_settings{settings}, m_fftw_results{0},
+    const std::string &name, std::shared_ptr<vis::OverlaySource> overlay_source)
+    : GenericTransformer(name), m_settings{settings},
+      m_overlay_source{std::move(overlay_source)}, m_fftw_results{0},
       m_fftw_input_left{nullptr}, m_fftw_input_right{nullptr},
       m_fftw_output_left{nullptr}, m_fftw_output_right{nullptr},
       m_fftw_plan_left{nullptr}, m_fftw_plan_right{nullptr},
@@ -80,7 +84,13 @@ bool vis::SpectrumTransformer::prepare_fft_input(pcm_stereo_sample *buffer,
             break;
         }
 
-        if (is_silent && fftw_input[i] > 0)
+        if (std::abs(fftw_input[i]) <= k_silence_sample_threshold)
+        {
+            fftw_input[i] = 0.0;
+            continue;
+        }
+
+        if (is_silent)
         {
             is_silent = false;
         }
@@ -181,8 +191,10 @@ void vis::SpectrumTransformer::execute(pcm_stereo_sample *buffer,
                              number_of_bars, &m_bars_right,
                              &m_bars_falloff_right);
 
-        // clear screen before writing
         writer->clear();
+        std::vector<std::vector<uint8_t>> occupied_cells(
+            static_cast<size_t>(win_height),
+            std::vector<uint8_t>(static_cast<size_t>(win_width), 0));
 
         auto max_bar_height = height;
         if (is_stereo)
@@ -190,11 +202,13 @@ void vis::SpectrumTransformer::execute(pcm_stereo_sample *buffer,
             ++max_bar_height; // add one so that the spectrums overlap in the
                               // middle
             draw_bars(m_bars_right, m_bars_falloff_right, max_bar_height, false,
-                    bar_row_msg, writer);
+                      bar_row_msg, writer, &occupied_cells);
         }
 
         draw_bars(m_bars_left, m_bars_falloff_left, max_bar_height, true,
-                  bar_row_msg, writer);
+                  bar_row_msg, writer, &occupied_cells);
+
+        draw_overlay(writer, &occupied_cells);
 
         writer->flush();
 
@@ -207,11 +221,138 @@ void vis::SpectrumTransformer::execute(pcm_stereo_sample *buffer,
     }
     else
     {
+        draw_cached_frame(writer, is_stereo);
+
+        const auto sleep_milliseconds = cached_frame_sleep_milliseconds();
         VIS_LOG(vis::LogLevel::DEBUG, "No input, Sleeping for %d milliseconds",
-                VisConstants::k_silent_sleep_milliseconds);
-        std::this_thread::sleep_for(std::chrono::milliseconds(
-            VisConstants::k_silent_sleep_milliseconds));
+                sleep_milliseconds);
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(sleep_milliseconds));
     }
+}
+
+bool vis::SpectrumTransformer::draw_overlay(
+    vis::NcursesWriter *writer,
+    const std::vector<std::vector<uint8_t>> *occupied_cells)
+{
+    if (m_overlay_source == nullptr || writer == nullptr)
+    {
+        return false;
+    }
+
+    const auto metadata = m_overlay_source->get_metadata();
+    return m_overlay_renderer.draw_overlay(*m_settings, metadata, writer,
+                                           occupied_cells);
+}
+
+bool vis::SpectrumTransformer::has_drawable_overlay() const
+{
+    if (m_overlay_source == nullptr || !m_settings->is_overlay_enabled())
+    {
+        return false;
+    }
+
+    const auto metadata = m_overlay_source->get_metadata();
+    if (m_overlay_renderer.has_fall_animation())
+    {
+        return true;
+    }
+
+    if (m_settings->is_overlay_marquee_enabled() && !metadata.title.empty())
+    {
+        return true;
+    }
+
+    return m_settings->is_overlay_progress_enabled() &&
+           (metadata.duration_ms > 0 || !metadata.playback.empty() ||
+            !metadata.audio_output_kind.empty());
+}
+
+bool vis::SpectrumTransformer::draw_cached_frame(vis::NcursesWriter *writer,
+                                                 const bool is_stereo)
+{
+    if (writer == nullptr)
+    {
+        return false;
+    }
+
+    std::wstring bar_row_msg =
+        create_bar_row_msg(m_settings->get_spectrum_character(),
+                           m_settings->get_spectrum_bar_width());
+
+    const auto win_width = NcursesUtils::get_window_width();
+    auto right_margin = static_cast<int32_t>(
+        m_settings->get_spectrum_right_margin() * win_width);
+    auto left_margin = static_cast<int32_t>(
+        m_settings->get_spectrum_left_margin() * win_width);
+    auto width = win_width - right_margin - left_margin;
+
+    const auto bar_width = static_cast<uint32_t>(bar_row_msg.size());
+    const auto bar_spacing = m_settings->get_spectrum_bar_spacing();
+    const auto bar_stride = bar_width + bar_spacing;
+    auto number_of_bars = std::max((static_cast<uint32_t>(width) + bar_spacing) / bar_stride, 1u);
+
+    decay_cached_bars(&m_bars_left, &m_bars_falloff_left, number_of_bars);
+
+    if (is_stereo)
+    {
+        decay_cached_bars(&m_bars_right, &m_bars_falloff_right,
+                          number_of_bars);
+    }
+
+    const auto win_height = NcursesUtils::get_window_height();
+    auto top_margin = static_cast<int32_t>(
+        m_settings->get_spectrum_top_margin() * win_height);
+
+    auto height = win_height;
+    height -= top_margin;
+    if (is_stereo)
+    {
+        height = height / 2;
+    }
+
+    writer->clear();
+    std::vector<std::vector<uint8_t>> occupied_cells(
+        static_cast<size_t>(win_height),
+        std::vector<uint8_t>(static_cast<size_t>(win_width), 0));
+
+    auto max_bar_height = height;
+    if (is_stereo)
+    {
+        ++max_bar_height;
+        draw_bars(m_bars_right, m_bars_falloff_right, max_bar_height, false,
+                  bar_row_msg, writer, &occupied_cells);
+    }
+
+    draw_bars(m_bars_left, m_bars_falloff_left, max_bar_height, true,
+              bar_row_msg, writer, &occupied_cells);
+
+    draw_overlay(writer, &occupied_cells);
+
+    writer->flush();
+    return true;
+}
+
+uint64_t vis::SpectrumTransformer::cached_frame_sleep_milliseconds() const
+{
+    if (m_overlay_renderer.is_fall_animation_active())
+    {
+        return k_overlay_fall_frame_sleep_milliseconds;
+    }
+
+    return VisConstants::k_silent_sleep_milliseconds;
+}
+
+bool vis::SpectrumTransformer::execute_idle(vis::NcursesWriter *writer)
+{
+    if (!draw_cached_frame(writer, m_settings->is_stereo_enabled()))
+    {
+        return false;
+    }
+
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(cached_frame_sleep_milliseconds()));
+    return true;
 }
 
 void vis::SpectrumTransformer::execute_stereo(pcm_stereo_sample *buffer,
@@ -352,6 +493,51 @@ void vis::SpectrumTransformer::apply_falloff(
             (*falloff_bars)[i] - 1);
 
         (*falloff_bars)[i] = std::max(falloff_value, bars[i]);
+    }
+}
+
+void vis::SpectrumTransformer::decay_cached_bars(
+    std::vector<double> *bars, std::vector<double> *falloff_bars,
+    const uint32_t number_of_bars) const
+{
+    if (bars == nullptr || falloff_bars == nullptr || number_of_bars == 0)
+    {
+        return;
+    }
+
+    if (bars->size() != number_of_bars)
+    {
+        bars->assign(number_of_bars, 0.0);
+    }
+    else
+    {
+        std::fill(bars->begin(), bars->end(), 0.0);
+    }
+
+    apply_falloff(*bars, falloff_bars);
+}
+
+void vis::SpectrumTransformer::mark_occupied_cells(
+    std::vector<std::vector<uint8_t>> *occupied_cells, const int32_t row,
+    const int32_t column, const int32_t width) const
+{
+    if (occupied_cells == nullptr || row < 0 || column < 0 || width <= 0 ||
+        row >= static_cast<int32_t>(occupied_cells->size()))
+    {
+        return;
+    }
+
+    auto &occupied_row = (*occupied_cells)[static_cast<size_t>(row)];
+    if (column >= static_cast<int32_t>(occupied_row.size()))
+    {
+        return;
+    }
+
+    const auto end_column =
+        std::min(column + width, static_cast<int32_t>(occupied_row.size()));
+    for (auto cell = column; cell < end_column; ++cell)
+    {
+        occupied_row[static_cast<size_t>(cell)] = 1;
     }
 }
 
@@ -498,7 +684,7 @@ void vis::SpectrumTransformer::create_spectrum_bars(
 void vis::SpectrumTransformer::draw_bars(
     const std::vector<double> &bars, const std::vector<double> &bars_falloff,
     int32_t win_height, const bool flipped, const std::wstring &bar_row_msg,
-    vis::NcursesWriter *writer)
+    vis::NcursesWriter *writer, std::vector<std::vector<uint8_t>> *occupied_cells)
 {
     recalculate_colors(static_cast<size_t>(win_height),
                        m_settings->get_colors(), &m_precomputed_colors, writer);
@@ -559,8 +745,11 @@ void vis::SpectrumTransformer::draw_bars(
                 static_cast<int32_t>((bar_row_msg.size() +
                                       m_settings->get_spectrum_bar_spacing()));
 
-            writer->write(row_height + top_margin - bottom_margin,
-                          column + left_margin,
+            const auto row = row_height + top_margin - bottom_margin;
+            const auto output_column = column + left_margin;
+            mark_occupied_cells(occupied_cells, row, output_column,
+                                static_cast<int32_t>(bar_row_msg.size()));
+            writer->write(row, output_column,
                           m_precomputed_colors[static_cast<size_t>(row_index)],
                           bar_row_msg, m_settings->get_spectrum_character());
         }
@@ -587,9 +776,14 @@ void vis::SpectrumTransformer::draw_bars(
                                   (bar_row_msg.size() +
                                    m_settings->get_spectrum_bar_spacing()));
 
+                const auto row =
+                    top_row_height + top_margin - bottom_margin;
+                const auto output_column = column + left_margin;
+                mark_occupied_cells(
+                    occupied_cells, row, output_column,
+                    static_cast<int32_t>(bar_row_msg.size()));
                 writer->write(
-                    top_row_height + top_margin - bottom_margin,
-                    column + left_margin,
+                    row, output_column,
                     m_precomputed_colors[static_cast<size_t>(row_index)],
                     bar_row_msg, m_settings->get_spectrum_character());
             }

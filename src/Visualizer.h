@@ -9,6 +9,7 @@
 #define _VIS_VISUALIZER_H
 
 #include "Domain/Settings.h"
+#include "Overlay/OverlaySource.h"
 #include "Domain/VisTypes.h"
 #include "Source/AudioSource.h"
 #include "Transformer/GenericTransformer.h"
@@ -56,6 +57,8 @@ class Visualizer
     size_t m_current_transformer_index;
 
     std::unique_ptr<vis::NcursesWriter> m_writer;
+
+    std::shared_ptr<vis::OverlaySource> m_overlay_source;
 
     std::unique_ptr<AudioSource> m_audio_source;
 

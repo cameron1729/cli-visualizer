@@ -118,6 +118,31 @@ static const double k_default_spectrum_left_margin = 0.0;
 
 static const bool k_default_spectrum_reversed = false;
 
+// overlay defaults
+static const bool k_default_overlay_enabled = false;
+static const std::string k_default_overlay_command{""};
+static const uint32_t k_default_overlay_poll_ms = 1000;
+static const bool k_default_overlay_marquee_enabled = false;
+static const uint32_t k_default_overlay_marquee_row = 0;
+static const double k_default_overlay_marquee_speed = 8.0;
+static const uint32_t k_default_overlay_marquee_gap = 12;
+static const bool k_default_overlay_marquee_boundary_enabled = false;
+static const std::wstring k_default_overlay_marquee_boundary_left{L"["};
+static const std::wstring k_default_overlay_marquee_boundary_right{L"]"};
+static const bool k_default_overlay_progress_enabled = false;
+static const uint32_t k_default_overlay_progress_row = 1;
+static const uint32_t k_default_overlay_progress_width = 18;
+static const std::string k_default_overlay_progress_align{"right"};
+static const bool k_default_overlay_progress_status_enabled = true;
+static const bool k_default_overlay_progress_time_enabled = true;
+static const std::wstring k_default_overlay_progress_filled{L"\u25B0"};
+static const std::wstring k_default_overlay_progress_empty{L"\u25B1"};
+static const std::wstring k_default_overlay_status_headphones_icon{L"\U0001F3A7"};
+static const std::wstring k_default_overlay_status_speakers_icon{L"\U0001F50A"};
+static const std::wstring k_default_overlay_status_playing_icon{L"\u25B6"};
+static const std::wstring k_default_overlay_status_paused_icon{L" "};
+static const std::wstring k_default_overlay_status_stopped_icon{L"\u23F9"};
+
 // input timeouts
 static const int64_t k_default_mpd_fifo_timeout = 1l;
 static const int32_t k_default_user_input_timeout_milliseconds = 500;
