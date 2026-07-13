@@ -28,7 +28,8 @@ class SpectrumTransformer : public GenericTransformer
     explicit SpectrumTransformer(
         const std::shared_ptr<const vis::Settings> settings,
         const std::string &name,
-        std::shared_ptr<vis::OverlaySource> overlay_source = nullptr);
+        std::shared_ptr<vis::OverlaySource> bgv_overlay_source = nullptr,
+        std::shared_ptr<vis::OverlaySource> flight_overlay_source = nullptr);
 
     SpectrumTransformer(const SpectrumTransformer &other) = delete;
 
@@ -57,6 +58,9 @@ class SpectrumTransformer : public GenericTransformer
     bool draw_overlay(
         vis::NcursesWriter *writer,
         const std::vector<std::vector<uint8_t>> *occupied_cells = nullptr);
+    bool draw_flight_overlay(
+        vis::NcursesWriter *writer,
+        const std::vector<std::vector<uint8_t>> *occupied_cells = nullptr);
     bool has_drawable_overlay() const;
     bool draw_cached_frame(vis::NcursesWriter *writer, bool is_stereo);
     uint64_t cached_frame_sleep_milliseconds() const;
@@ -67,7 +71,8 @@ class SpectrumTransformer : public GenericTransformer
         std::vector<std::vector<uint8_t>> *occupied_cells, int32_t row,
         int32_t column, int32_t width) const;
     const std::shared_ptr<const Settings> m_settings;
-    std::shared_ptr<vis::OverlaySource> m_overlay_source;
+    std::shared_ptr<vis::OverlaySource> m_bgv_overlay_source;
+    std::shared_ptr<vis::OverlaySource> m_flight_overlay_source;
     vis::OverlayRenderer m_overlay_renderer;
 
     /** --- BEGIN MEMBER VARIABLES --- */

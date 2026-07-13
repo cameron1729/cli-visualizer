@@ -31,6 +31,12 @@ class OverlayRenderer
     bool draw_progress(const Settings &settings,
                        const OverlayMetadata &metadata,
                        NcursesWriter *writer);
+    bool draw_flight_progress(const Settings &settings,
+                              const OverlayMetadata &metadata,
+                              const OverlayMetadata &playback_metadata,
+                              NcursesWriter *writer,
+                              const std::vector<std::vector<uint8_t>>
+                                  *occupied_cells = nullptr);
     bool has_fall_animation() const noexcept;
     bool is_fall_animation_active() const noexcept;
 

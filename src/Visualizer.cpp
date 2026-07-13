@@ -44,12 +44,18 @@ vis::Visualizer::Visualizer(const std::string &config_path,
                             const std::locale &loc)
     : m_settings{std::make_shared<vis::Settings>(config_path)},
       m_current_color_scheme_index{0}, m_current_transformer_index{0},
-      m_overlay_source{std::make_shared<vis::OverlaySource>()},
+      m_bgv_overlay_source{std::make_shared<vis::OverlaySource>()},
+      m_flight_overlay_source{std::make_shared<vis::OverlaySource>()},
       m_shutdown{false}, m_signal_handlers_setup{false}, m_loc{loc},
       m_pcm_buffer{nullptr}
 {
     vis::ConfigurationUtils::load_settings(m_settings, config_path, loc);
-    m_overlay_source->configure(m_settings);
+    m_bgv_overlay_source->configure(m_settings);
+    m_flight_overlay_source->configure(
+        m_settings->is_overlay_enabled() &&
+            m_settings->is_overlay_flight_enabled(),
+        m_settings->get_overlay_flight_command(),
+        m_settings->get_overlay_flight_poll_ms());
     g_vis = this;
 }
 
@@ -293,7 +299,12 @@ void vis::Visualizer::reload_config()
     vis::ConfigurationUtils::load_settings(m_settings, config_path, m_loc);
 
     m_settings->set_scaling_multiplier(scaling_multiplier);
-    m_overlay_source->configure(m_settings);
+    m_bgv_overlay_source->configure(m_settings);
+    m_flight_overlay_source->configure(
+        m_settings->is_overlay_enabled() &&
+            m_settings->is_overlay_flight_enabled(),
+        m_settings->get_overlay_flight_command(),
+        m_settings->get_overlay_flight_poll_ms());
 
     setup_transformers();
 
@@ -333,7 +344,8 @@ void vis::Visualizer::setup_transformers()
         {
             m_transformers.emplace_back(
                 std::make_unique<SpectrumTransformer>(
-                    m_settings, visualizer, m_overlay_source));
+                    m_settings, visualizer, m_bgv_overlay_source,
+                    m_flight_overlay_source));
         }
         else if (visualizer == VisConstants::k_spectrum_circle_visualizer_name)
         {

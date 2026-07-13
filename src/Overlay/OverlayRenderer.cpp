@@ -12,6 +12,7 @@
 #include <cmath>
 #include <codecvt>
 #include <cstdio>
+#include <cstdlib>
 #include <cwchar>
 #include <locale>
 #include <stdexcept>
@@ -25,6 +26,13 @@ const std::string k_audio_output_speakers{"speakers"};
 const std::string k_playback_playing{"playing"};
 const std::string k_playback_paused{"paused"};
 const std::string k_playback_stopped{"stopped"};
+
+struct FlightMarker
+{
+    int64_t progress_per_mille{0};
+    std::string target_label;
+    int64_t eta_seconds{-1};
+};
 
 std::string lowercase(std::string value)
 {
@@ -84,6 +92,24 @@ std::wstring configured_or_default(const std::wstring &configured,
                                    const std::wstring &default_value)
 {
     return configured.empty() ? default_value : configured;
+}
+
+int32_t wstring_cell_width(const std::wstring &text)
+{
+    int32_t width = 0;
+    for (const auto ch : text)
+    {
+        const auto ch_width = static_cast<int32_t>(wcwidth(ch));
+        if (ch_width > 0)
+        {
+            width += ch_width;
+        }
+        else if (ch_width < 0)
+        {
+            ++width;
+        }
+    }
+    return width;
 }
 
 bool cells_are_free(
@@ -199,6 +225,283 @@ std::wstring progress_bar(const vis::Settings &settings,
     }
 
     return bar;
+}
+
+std::wstring format_eta(const int64_t seconds)
+{
+    if (seconds < 0)
+    {
+        return L"";
+    }
+
+    const auto hours = seconds / 3600;
+    const auto minutes = (seconds % 3600) / 60;
+
+    char buffer[32];
+    if (hours > 0)
+    {
+        std::snprintf(buffer, sizeof(buffer), "%lldh%02lldm",
+                      static_cast<long long>(hours),
+                      static_cast<long long>(minutes));
+    }
+    else
+    {
+        std::snprintf(buffer, sizeof(buffer), "%lldm",
+                      static_cast<long long>(minutes));
+    }
+
+    return ascii_to_wstring(buffer);
+}
+
+std::vector<std::string> split_string(const std::string &text,
+                                      const char delimiter)
+{
+    std::vector<std::string> parts;
+    std::string current;
+    for (const auto ch : text)
+    {
+        if (ch == delimiter)
+        {
+            parts.push_back(current);
+            current.clear();
+        }
+        else
+        {
+            current.push_back(ch);
+        }
+    }
+    parts.push_back(current);
+    return parts;
+}
+
+bool parse_int64(const std::string &text, int64_t *value)
+{
+    if (value == nullptr || text.empty())
+    {
+        return false;
+    }
+
+    char *end = nullptr;
+    const auto parsed = std::strtoll(text.c_str(), &end, 10);
+    if (end == text.c_str() || *end != '\0')
+    {
+        return false;
+    }
+
+    *value = parsed;
+    return true;
+}
+
+std::vector<FlightMarker> flight_markers(
+    const vis::OverlayMetadata &metadata)
+{
+    std::vector<FlightMarker> markers;
+
+    for (const auto &entry : split_string(metadata.flight_markers, ';'))
+    {
+        if (entry.empty())
+        {
+            continue;
+        }
+
+        const auto parts = split_string(entry, '|');
+        if (parts.size() < 2)
+        {
+            continue;
+        }
+
+        FlightMarker marker;
+        if (!parse_int64(parts[0], &marker.progress_per_mille))
+        {
+            continue;
+        }
+        marker.target_label = parts[1];
+        if (parts.size() >= 3)
+        {
+            int64_t eta_seconds = -1;
+            if (parse_int64(parts[2], &eta_seconds))
+            {
+                marker.eta_seconds = eta_seconds;
+            }
+        }
+        markers.push_back(marker);
+    }
+
+    if (markers.empty())
+    {
+        markers.push_back(FlightMarker{metadata.flight_progress_per_mille,
+                                       metadata.flight_target_label,
+                                       metadata.flight_eta_seconds});
+    }
+
+    return markers;
+}
+
+std::wstring flight_marker_plane(const vis::Settings &settings,
+                                 const vis::OverlayMetadata &metadata,
+                                 const std::string &target_label)
+{
+    const auto left_plane = configured_or_default(
+        settings.get_overlay_flight_plane_left(),
+        VisConstants::k_default_overlay_flight_plane_left);
+    const auto right_plane = configured_or_default(
+        settings.get_overlay_flight_plane_right(),
+        VisConstants::k_default_overlay_flight_plane_right);
+
+    const auto target = lowercase(target_label);
+    if (!target.empty() && target == lowercase(metadata.flight_left_label))
+    {
+        return left_plane;
+    }
+
+    if (!target.empty() && target == lowercase(metadata.flight_right_label))
+    {
+        return right_plane;
+    }
+
+    return right_plane;
+}
+
+int32_t marker_position(const int32_t route_cells, const int32_t marker_width,
+                        const int64_t progress_per_mille)
+{
+    const auto progress =
+        std::max<int64_t>(0, std::min<int64_t>(1000, progress_per_mille));
+    return static_cast<int32_t>(
+        std::round((static_cast<double>(progress) / 1000.0) *
+                   static_cast<double>(route_cells - marker_width)));
+}
+
+bool marker_fits(const std::vector<uint8_t> &occupied, const int32_t start,
+                 const int32_t width)
+{
+    if (start < 0 || width <= 0 ||
+        start + width > static_cast<int32_t>(occupied.size()))
+    {
+        return false;
+    }
+
+    for (auto i = start; i < start + width; ++i)
+    {
+        if (occupied[static_cast<size_t>(i)] != 0)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int32_t find_marker_position(const std::vector<uint8_t> &occupied,
+                             const int32_t preferred, const int32_t width)
+{
+    if (marker_fits(occupied, preferred, width))
+    {
+        return preferred;
+    }
+
+    for (auto offset = 1; offset < static_cast<int32_t>(occupied.size());
+         ++offset)
+    {
+        const auto right = preferred + offset;
+        if (marker_fits(occupied, right, width))
+        {
+            return right;
+        }
+
+        const auto left = preferred - offset;
+        if (marker_fits(occupied, left, width))
+        {
+            return left;
+        }
+    }
+
+    return -1;
+}
+
+std::wstring flight_route(const vis::Settings &settings,
+                          const vis::OverlayMetadata &metadata,
+                          const int32_t cell_width)
+{
+    if (!metadata.flight_active || metadata.flight_left_label.empty() ||
+        metadata.flight_right_label.empty())
+    {
+        return L"";
+    }
+
+    const auto left = ascii_to_wstring(metadata.flight_left_label);
+    const auto right = ascii_to_wstring(metadata.flight_right_label);
+    const auto markers = flight_markers(metadata);
+    auto suffix = std::wstring{};
+    const auto eta = markers.size() == 1
+                         ? format_eta(markers.front().eta_seconds)
+                         : L"";
+    if (!eta.empty())
+    {
+        suffix.push_back(L' ');
+        suffix.append(eta);
+    }
+
+    const auto left_width = wstring_cell_width(left);
+    const auto right_width = wstring_cell_width(right);
+    const auto suffix_width = wstring_cell_width(suffix);
+    auto max_marker_width = 1;
+    for (const auto &marker : markers)
+    {
+        max_marker_width = std::max(
+            max_marker_width,
+            std::max(1, wstring_cell_width(flight_marker_plane(
+                            settings, metadata, marker.target_label))));
+    }
+    const auto min_route_cells =
+        std::max(3, max_marker_width * static_cast<int32_t>(markers.size()));
+    const auto min_width =
+        left_width + right_width + suffix_width + min_route_cells + 2;
+    const auto total_width = std::max(min_width, cell_width);
+    const auto route_cells =
+        std::max(min_route_cells,
+                 total_width - left_width - right_width - suffix_width - 2);
+
+    std::vector<std::wstring> cells(static_cast<size_t>(route_cells),
+                                    L"\u2500");
+    std::vector<uint8_t> occupied(static_cast<size_t>(route_cells), 0);
+    for (const auto &marker : markers)
+    {
+        const auto plane =
+            flight_marker_plane(settings, metadata, marker.target_label);
+        const auto plane_width = std::max(1, wstring_cell_width(plane));
+        const auto preferred = marker_position(
+            route_cells, plane_width, marker.progress_per_mille);
+        const auto position =
+            find_marker_position(occupied, preferred, plane_width);
+        if (position < 0)
+        {
+            continue;
+        }
+
+        cells[static_cast<size_t>(position)] = plane;
+        for (auto i = position; i < position + plane_width; ++i)
+        {
+            occupied[static_cast<size_t>(i)] = 1;
+            if (i != position)
+            {
+                cells[static_cast<size_t>(i)] = L"";
+            }
+        }
+    }
+
+    std::wstring route;
+    route.append(left);
+    route.push_back(L' ');
+    for (const auto &cell : cells)
+    {
+        route.append(cell);
+    }
+    route.push_back(L' ');
+    route.append(right);
+    route.append(suffix);
+
+    return route;
 }
 
 } // namespace
@@ -628,6 +931,68 @@ bool vis::OverlayRenderer::draw_progress(
     }
 
     return drew;
+}
+
+bool vis::OverlayRenderer::draw_flight_progress(
+    const vis::Settings &settings, const vis::OverlayMetadata &metadata,
+    const vis::OverlayMetadata &playback_metadata, vis::NcursesWriter *writer,
+    const std::vector<std::vector<uint8_t>> *occupied_cells)
+{
+    if (!settings.is_overlay_enabled() ||
+        !settings.is_overlay_flight_enabled() ||
+        !settings.is_overlay_progress_enabled() || writer == nullptr ||
+        !metadata.flight_active)
+    {
+        return false;
+    }
+
+    const auto win_width = NcursesUtils::get_window_width();
+    const auto win_height = NcursesUtils::get_window_height();
+    const auto has_marquee =
+        settings.is_overlay_marquee_enabled() && !playback_metadata.title.empty();
+    const auto row = has_marquee
+                         ? static_cast<int32_t>(
+                               settings.get_overlay_progress_row())
+                         : 0;
+    if (win_width <= 0 || win_height <= 0 || row < 0 || row >= win_height)
+    {
+        return false;
+    }
+
+    auto route_width =
+        has_marquee ? static_cast<int32_t>(settings.get_overlay_flight_width())
+                    : win_width;
+    if (has_marquee && route_width <= 0)
+    {
+        const auto left = status_left(settings, playback_metadata);
+        const auto right = status_right(settings, playback_metadata);
+        const auto left_width = glyphs_width(text_to_glyphs(left, nullptr));
+        const auto right_width = glyphs_width(text_to_glyphs(right, nullptr));
+        const auto status_gap = left_width > 0 && right_width > 0 ? 1 : 0;
+        const auto min_status_width = left_width + status_gap + right_width;
+        const auto configured_bar_width =
+            static_cast<int32_t>(settings.get_overlay_progress_width());
+        const auto block_width =
+            std::max(min_status_width, configured_bar_width);
+        const auto gap = 2;
+        route_width =
+            lowercase(settings.get_overlay_progress_align()) == k_align_right
+                ? win_width - block_width - gap
+                : win_width;
+    }
+    route_width = std::max(3, std::min(route_width, win_width));
+
+    const auto route = flight_route(settings, metadata, route_width);
+    if (route.empty())
+    {
+        return false;
+    }
+
+    const auto color = writer->to_color_pair(0, 0, settings.get_colors(), true);
+    const auto glyphs = text_to_glyphs(route, nullptr);
+    draw_glyphs(writer, row, 0, color, glyphs, win_width, occupied_cells,
+                nullptr);
+    return true;
 }
 
 void vis::OverlayRenderer::start_fall()

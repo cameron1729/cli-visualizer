@@ -40,9 +40,13 @@ const uint64_t k_overlay_fall_frame_sleep_milliseconds = 25;
 
 vis::SpectrumTransformer::SpectrumTransformer(
     const std::shared_ptr<const vis::Settings> settings,
-    const std::string &name, std::shared_ptr<vis::OverlaySource> overlay_source)
+    const std::string &name,
+    std::shared_ptr<vis::OverlaySource> bgv_overlay_source,
+    std::shared_ptr<vis::OverlaySource> flight_overlay_source)
     : GenericTransformer(name), m_settings{settings},
-      m_overlay_source{std::move(overlay_source)}, m_fftw_results{0},
+      m_bgv_overlay_source{std::move(bgv_overlay_source)},
+      m_flight_overlay_source{std::move(flight_overlay_source)},
+      m_fftw_results{0},
       m_fftw_input_left{nullptr}, m_fftw_input_right{nullptr},
       m_fftw_output_left{nullptr}, m_fftw_output_right{nullptr},
       m_fftw_plan_left{nullptr}, m_fftw_plan_right{nullptr},
@@ -208,6 +212,7 @@ void vis::SpectrumTransformer::execute(pcm_stereo_sample *buffer,
         draw_bars(m_bars_left, m_bars_falloff_left, max_bar_height, true,
                   bar_row_msg, writer, &occupied_cells);
 
+        draw_flight_overlay(writer, &occupied_cells);
         draw_overlay(writer, &occupied_cells);
 
         writer->flush();
@@ -235,24 +240,51 @@ bool vis::SpectrumTransformer::draw_overlay(
     vis::NcursesWriter *writer,
     const std::vector<std::vector<uint8_t>> *occupied_cells)
 {
-    if (m_overlay_source == nullptr || writer == nullptr)
+    if ((m_bgv_overlay_source == nullptr && m_flight_overlay_source == nullptr) ||
+        writer == nullptr)
     {
         return false;
     }
 
-    const auto metadata = m_overlay_source->get_metadata();
+    const auto metadata = m_bgv_overlay_source != nullptr
+                              ? m_bgv_overlay_source->get_metadata()
+                              : vis::OverlayMetadata{};
     return m_overlay_renderer.draw_overlay(*m_settings, metadata, writer,
                                            occupied_cells);
 }
 
-bool vis::SpectrumTransformer::has_drawable_overlay() const
+bool vis::SpectrumTransformer::draw_flight_overlay(
+    vis::NcursesWriter *writer,
+    const std::vector<std::vector<uint8_t>> *occupied_cells)
 {
-    if (m_overlay_source == nullptr || !m_settings->is_overlay_enabled())
+    if (m_flight_overlay_source == nullptr || writer == nullptr)
     {
         return false;
     }
 
-    const auto metadata = m_overlay_source->get_metadata();
+    const auto flight_metadata = m_flight_overlay_source->get_metadata();
+    const auto playback_metadata = m_bgv_overlay_source != nullptr
+                                       ? m_bgv_overlay_source->get_metadata()
+                                       : vis::OverlayMetadata{};
+    return m_overlay_renderer.draw_flight_progress(
+        *m_settings, flight_metadata, playback_metadata, writer,
+        occupied_cells);
+}
+
+bool vis::SpectrumTransformer::has_drawable_overlay() const
+{
+    if ((m_bgv_overlay_source == nullptr && m_flight_overlay_source == nullptr) ||
+        !m_settings->is_overlay_enabled())
+    {
+        return false;
+    }
+
+    const auto metadata = m_bgv_overlay_source != nullptr
+                              ? m_bgv_overlay_source->get_metadata()
+                              : vis::OverlayMetadata{};
+    const auto flight_metadata = m_flight_overlay_source != nullptr
+                                     ? m_flight_overlay_source->get_metadata()
+                                     : vis::OverlayMetadata{};
     if (m_overlay_renderer.has_fall_animation())
     {
         return true;
@@ -265,7 +297,8 @@ bool vis::SpectrumTransformer::has_drawable_overlay() const
 
     return m_settings->is_overlay_progress_enabled() &&
            (metadata.duration_ms > 0 || !metadata.playback.empty() ||
-            !metadata.audio_output_kind.empty());
+            !metadata.audio_output_kind.empty() ||
+            flight_metadata.flight_active);
 }
 
 bool vis::SpectrumTransformer::draw_cached_frame(vis::NcursesWriter *writer,
@@ -327,6 +360,7 @@ bool vis::SpectrumTransformer::draw_cached_frame(vis::NcursesWriter *writer,
     draw_bars(m_bars_left, m_bars_falloff_left, max_bar_height, true,
               bar_row_msg, writer, &occupied_cells);
 
+    draw_flight_overlay(writer, &occupied_cells);
     draw_overlay(writer, &occupied_cells);
 
     writer->flush();

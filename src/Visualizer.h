@@ -58,7 +58,9 @@ class Visualizer
 
     std::unique_ptr<vis::NcursesWriter> m_writer;
 
-    std::shared_ptr<vis::OverlaySource> m_overlay_source;
+    std::shared_ptr<vis::OverlaySource> m_bgv_overlay_source;
+
+    std::shared_ptr<vis::OverlaySource> m_flight_overlay_source;
 
     std::unique_ptr<AudioSource> m_audio_source;
 
