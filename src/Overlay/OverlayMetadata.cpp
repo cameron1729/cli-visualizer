@@ -133,6 +133,77 @@ bool parse_json_int(const std::string &json, size_t *pos, int64_t *value)
     return true;
 }
 
+bool parse_json_double(const std::string &json, size_t *pos, double *value)
+{
+    skip_ws(json, pos);
+    if (*pos >= json.size())
+    {
+        return false;
+    }
+
+    const auto start = *pos;
+    if (json[*pos] == '-')
+    {
+        ++(*pos);
+    }
+
+    if (*pos >= json.size() ||
+        std::isdigit(static_cast<unsigned char>(json[*pos])) == 0)
+    {
+        return false;
+    }
+
+    while (*pos < json.size() &&
+           std::isdigit(static_cast<unsigned char>(json[*pos])) != 0)
+    {
+        ++(*pos);
+    }
+
+    if (*pos < json.size() && json[*pos] == '.')
+    {
+        ++(*pos);
+        if (*pos >= json.size() ||
+            std::isdigit(static_cast<unsigned char>(json[*pos])) == 0)
+        {
+            return false;
+        }
+        while (*pos < json.size() &&
+               std::isdigit(static_cast<unsigned char>(json[*pos])) != 0)
+        {
+            ++(*pos);
+        }
+    }
+
+    if (*pos < json.size() && (json[*pos] == 'e' || json[*pos] == 'E'))
+    {
+        ++(*pos);
+        if (*pos < json.size() && (json[*pos] == '-' || json[*pos] == '+'))
+        {
+            ++(*pos);
+        }
+        if (*pos >= json.size() ||
+            std::isdigit(static_cast<unsigned char>(json[*pos])) == 0)
+        {
+            return false;
+        }
+        while (*pos < json.size() &&
+               std::isdigit(static_cast<unsigned char>(json[*pos])) != 0)
+        {
+            ++(*pos);
+        }
+    }
+
+    char *end = nullptr;
+    const auto parsed = std::strtod(json.c_str() + start, &end);
+    if (end != json.c_str() + *pos)
+    {
+        return false;
+    }
+
+    *value = parsed;
+    return true;
+}
+
 bool skip_json_literal(const std::string &json, size_t *pos,
                        const std::string &literal)
 {
@@ -143,6 +214,23 @@ bool skip_json_literal(const std::string &json, size_t *pos,
     }
     *pos += literal.size();
     return true;
+}
+
+bool parse_json_bool(const std::string &json, size_t *pos, bool *value)
+{
+    if (skip_json_literal(json, pos, "true"))
+    {
+        *value = true;
+        return true;
+    }
+
+    if (skip_json_literal(json, pos, "false"))
+    {
+        *value = false;
+        return true;
+    }
+
+    return false;
 }
 
 bool skip_json_value(const std::string &json, size_t *pos)
@@ -162,8 +250,8 @@ bool skip_json_value(const std::string &json, size_t *pos)
     if (json[*pos] == '-' ||
         std::isdigit(static_cast<unsigned char>(json[*pos])) != 0)
     {
-        int64_t unused = 0;
-        return parse_json_int(json, pos, &unused);
+        double unused = 0.0;
+        return parse_json_double(json, pos, &unused);
     }
 
     return skip_json_literal(json, pos, "true") ||
@@ -242,6 +330,106 @@ bool vis::parse_overlay_metadata_json(const std::string &json,
         else if (key == "duration_ms")
         {
             if (!parse_json_int(json, &pos, &parsed.duration_ms))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_active")
+        {
+            if (!parse_json_bool(json, &pos, &parsed.flight_active))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_callsign")
+        {
+            if (!parse_json_string(json, &pos, &parsed.flight_callsign))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_left_label")
+        {
+            if (!parse_json_string(json, &pos, &parsed.flight_left_label))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_right_label")
+        {
+            if (!parse_json_string(json, &pos, &parsed.flight_right_label))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_direction_label")
+        {
+            if (!parse_json_string(json, &pos, &parsed.flight_direction_label))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_target_label")
+        {
+            if (!parse_json_string(json, &pos, &parsed.flight_target_label))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_markers")
+        {
+            if (!parse_json_string(json, &pos, &parsed.flight_markers))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_progress_per_mille")
+        {
+            if (!parse_json_int(json, &pos,
+                                &parsed.flight_progress_per_mille))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_eta_seconds")
+        {
+            if (!parse_json_int(json, &pos, &parsed.flight_eta_seconds))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_lat")
+        {
+            if (!parse_json_double(json, &pos, &parsed.flight_lat))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_lon")
+        {
+            if (!parse_json_double(json, &pos, &parsed.flight_lon))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_alt_ft")
+        {
+            if (!parse_json_int(json, &pos, &parsed.flight_alt_ft))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_ground_speed_kt")
+        {
+            if (!parse_json_int(json, &pos,
+                                &parsed.flight_ground_speed_kt))
+            {
+                return false;
+            }
+        }
+        else if (key == "flight_track_deg")
+        {
+            if (!parse_json_int(json, &pos, &parsed.flight_track_deg))
             {
                 return false;
             }
