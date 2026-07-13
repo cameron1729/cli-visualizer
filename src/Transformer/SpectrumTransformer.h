@@ -15,6 +15,7 @@
 #include "Domain/Settings.h"
 #include "Overlay/OverlayRenderer.h"
 #include "Overlay/OverlaySource.h"
+#include "Overlay/StatusSource.h"
 #include "Transformer/GenericTransformer.h"
 #include "Writer/NcursesWriter.h"
 #include <fftw3.h>
@@ -29,7 +30,8 @@ class SpectrumTransformer : public GenericTransformer
         const std::shared_ptr<const vis::Settings> settings,
         const std::string &name,
         std::shared_ptr<vis::OverlaySource> bgv_overlay_source = nullptr,
-        std::shared_ptr<vis::OverlaySource> flight_overlay_source = nullptr);
+        std::shared_ptr<vis::OverlaySource> flight_overlay_source = nullptr,
+        std::shared_ptr<vis::StatusSource> status_source = nullptr);
 
     SpectrumTransformer(const SpectrumTransformer &other) = delete;
 
@@ -61,6 +63,7 @@ class SpectrumTransformer : public GenericTransformer
     bool draw_flight_overlay(
         vis::NcursesWriter *writer,
         const std::vector<std::vector<uint8_t>> *occupied_cells = nullptr);
+    bool draw_status_overlay(vis::NcursesWriter *writer);
     bool has_drawable_overlay() const;
     bool draw_cached_frame(vis::NcursesWriter *writer, bool is_stereo);
     uint64_t cached_frame_sleep_milliseconds() const;
@@ -73,6 +76,7 @@ class SpectrumTransformer : public GenericTransformer
     const std::shared_ptr<const Settings> m_settings;
     std::shared_ptr<vis::OverlaySource> m_bgv_overlay_source;
     std::shared_ptr<vis::OverlaySource> m_flight_overlay_source;
+    std::shared_ptr<vis::StatusSource> m_status_source;
     vis::OverlayRenderer m_overlay_renderer;
 
     /** --- BEGIN MEMBER VARIABLES --- */

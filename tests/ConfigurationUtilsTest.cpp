@@ -100,6 +100,34 @@ TEST_F(ConfigurationUtilsTest, FlightOverlayWidthCanBeConfigured)
     std::remove(path.c_str());
 }
 
+TEST_F(ConfigurationUtilsTest, StatusOverlayCanBeConfigured)
+{
+    const auto path = write_temp_config(
+        "visualizer.overlay.enabled=true\n"
+        "visualizer.overlay.status.enabled=true\n"
+        "visualizer.overlay.status.command=moodle pipeline status --format ndjson\n"
+        "visualizer.overlay.status.poll.ms=60000\n"
+        "visualizer.overlay.status.row=0\n"
+        "visualizer.overlay.status.speed=4.5\n"
+        "visualizer.overlay.status.gap=6\n"
+        "visualizer.overlay.status.boundary.left=<\n"
+        "visualizer.overlay.status.boundary.right=>\n");
+    auto settings = std::make_shared<vis::Settings>(path);
+
+    load_settings(settings, path, std::locale(""));
+
+    EXPECT_TRUE(settings->is_overlay_status_enabled());
+    EXPECT_EQ("moodle pipeline status --format ndjson",
+              settings->get_overlay_status_command());
+    EXPECT_EQ(60000, settings->get_overlay_status_poll_ms());
+    EXPECT_EQ(0, settings->get_overlay_status_row());
+    EXPECT_DOUBLE_EQ(4.5, settings->get_overlay_status_speed());
+    EXPECT_EQ(6, settings->get_overlay_status_gap());
+    EXPECT_EQ(L"<", settings->get_overlay_status_boundary_left());
+    EXPECT_EQ(L">", settings->get_overlay_status_boundary_right());
+    std::remove(path.c_str());
+}
+
 TEST_F(ConfigurationUtilsTest, GetGradientIntervalTwo)
 {
     EXPECT_EQ(255, get_gradient_interval(2, 256))

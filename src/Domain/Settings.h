@@ -478,6 +478,88 @@ class Settings
         m_overlay_flight_plane_right = overlay_flight_plane_right;
     }
 
+    bool is_overlay_status_enabled() const noexcept
+    {
+        return m_overlay_status_enabled;
+    }
+
+    void set_overlay_status_enabled(bool overlay_status_enabled)
+    {
+        m_overlay_status_enabled = overlay_status_enabled;
+    }
+
+    const std::string &get_overlay_status_command() const noexcept
+    {
+        return m_overlay_status_command;
+    }
+
+    void set_overlay_status_command(const std::string &overlay_status_command)
+    {
+        m_overlay_status_command = overlay_status_command;
+    }
+
+    uint32_t get_overlay_status_poll_ms() const noexcept
+    {
+        return m_overlay_status_poll_ms;
+    }
+
+    void set_overlay_status_poll_ms(uint32_t overlay_status_poll_ms)
+    {
+        m_overlay_status_poll_ms = overlay_status_poll_ms;
+    }
+
+    uint32_t get_overlay_status_row() const noexcept
+    {
+        return m_overlay_status_row;
+    }
+
+    void set_overlay_status_row(uint32_t overlay_status_row)
+    {
+        m_overlay_status_row = overlay_status_row;
+    }
+
+    double get_overlay_status_speed() const noexcept
+    {
+        return m_overlay_status_speed;
+    }
+
+    void set_overlay_status_speed(double overlay_status_speed)
+    {
+        m_overlay_status_speed = overlay_status_speed;
+    }
+
+    uint32_t get_overlay_status_gap() const noexcept
+    {
+        return m_overlay_status_gap;
+    }
+
+    void set_overlay_status_gap(uint32_t overlay_status_gap)
+    {
+        m_overlay_status_gap = overlay_status_gap;
+    }
+
+    const std::wstring &get_overlay_status_boundary_left() const noexcept
+    {
+        return m_overlay_status_boundary_left;
+    }
+
+    void set_overlay_status_boundary_left(
+        const std::wstring &overlay_status_boundary_left)
+    {
+        m_overlay_status_boundary_left = overlay_status_boundary_left;
+    }
+
+    const std::wstring &get_overlay_status_boundary_right() const noexcept
+    {
+        return m_overlay_status_boundary_right;
+    }
+
+    void set_overlay_status_boundary_right(
+        const std::wstring &overlay_status_boundary_right)
+    {
+        m_overlay_status_boundary_right = overlay_status_boundary_right;
+    }
+
     bool is_overlay_marquee_enabled() const noexcept
     {
         return m_overlay_marquee_enabled;
@@ -746,6 +828,14 @@ class Settings
     uint32_t m_overlay_flight_width;
     std::wstring m_overlay_flight_plane_left;
     std::wstring m_overlay_flight_plane_right;
+    bool m_overlay_status_enabled;
+    std::string m_overlay_status_command;
+    uint32_t m_overlay_status_poll_ms;
+    uint32_t m_overlay_status_row;
+    double m_overlay_status_speed;
+    uint32_t m_overlay_status_gap;
+    std::wstring m_overlay_status_boundary_left;
+    std::wstring m_overlay_status_boundary_right;
     bool m_overlay_marquee_enabled;
     uint32_t m_overlay_marquee_row;
     double m_overlay_marquee_speed;

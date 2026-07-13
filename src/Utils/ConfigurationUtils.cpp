@@ -103,6 +103,22 @@ const std::string k_overlay_flight_plane_left_setting{
     "visualizer.overlay.flight.plane.left"};
 const std::string k_overlay_flight_plane_right_setting{
     "visualizer.overlay.flight.plane.right"};
+const std::string k_overlay_status_enabled_setting{
+    "visualizer.overlay.status.enabled"};
+const std::string k_overlay_status_command_setting{
+    "visualizer.overlay.status.command"};
+const std::string k_overlay_status_poll_ms_setting{
+    "visualizer.overlay.status.poll.ms"};
+const std::string k_overlay_status_row_setting{
+    "visualizer.overlay.status.row"};
+const std::string k_overlay_status_speed_setting{
+    "visualizer.overlay.status.speed"};
+const std::string k_overlay_status_gap_setting{
+    "visualizer.overlay.status.gap"};
+const std::string k_overlay_status_boundary_left_setting{
+    "visualizer.overlay.status.boundary.left"};
+const std::string k_overlay_status_boundary_right_setting{
+    "visualizer.overlay.status.boundary.right"};
 const std::string k_overlay_marquee_enabled_setting{
     "visualizer.overlay.marquee.enabled"};
 const std::string k_overlay_marquee_row_setting{
@@ -879,6 +895,43 @@ void vis::ConfigurationUtils::load_settings(
     settings->set_overlay_flight_plane_right(
         Utils::get(properties, k_overlay_flight_plane_right_setting,
                    VisConstants::k_default_overlay_flight_plane_right));
+
+    settings->set_overlay_status_enabled(
+        Utils::get(properties, k_overlay_status_enabled_setting,
+                   VisConstants::k_default_overlay_status_enabled));
+
+    settings->set_overlay_status_command(
+        Utils::get(properties, k_overlay_status_command_setting,
+                   VisConstants::k_default_overlay_status_command));
+
+    settings->set_overlay_status_poll_ms(
+        Utils::get(properties, k_overlay_status_poll_ms_setting,
+                   VisConstants::k_default_overlay_status_poll_ms));
+    validate_setting_is_greater_than_zero(
+        settings->get_overlay_status_poll_ms(),
+        k_overlay_status_poll_ms_setting);
+
+    settings->set_overlay_status_row(
+        Utils::get(properties, k_overlay_status_row_setting,
+                   VisConstants::k_default_overlay_status_row));
+
+    settings->set_overlay_status_speed(
+        Utils::get(properties, k_overlay_status_speed_setting,
+                   VisConstants::k_default_overlay_status_speed));
+    validate_setting_is_not_negative(settings->get_overlay_status_speed(),
+                                     k_overlay_status_speed_setting);
+
+    settings->set_overlay_status_gap(
+        Utils::get(properties, k_overlay_status_gap_setting,
+                   VisConstants::k_default_overlay_status_gap));
+
+    settings->set_overlay_status_boundary_left(
+        Utils::get(properties, k_overlay_status_boundary_left_setting,
+                   VisConstants::k_default_overlay_status_boundary_left));
+
+    settings->set_overlay_status_boundary_right(
+        Utils::get(properties, k_overlay_status_boundary_right_setting,
+                   VisConstants::k_default_overlay_status_boundary_right));
 
     settings->set_overlay_marquee_enabled(
         Utils::get(properties, k_overlay_marquee_enabled_setting,

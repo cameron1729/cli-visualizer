@@ -10,6 +10,7 @@
 
 #include "Domain/Settings.h"
 #include "Overlay/OverlaySource.h"
+#include "Overlay/StatusSource.h"
 #include "Domain/VisTypes.h"
 #include "Source/AudioSource.h"
 #include "Transformer/GenericTransformer.h"
@@ -61,6 +62,8 @@ class Visualizer
     std::shared_ptr<vis::OverlaySource> m_bgv_overlay_source;
 
     std::shared_ptr<vis::OverlaySource> m_flight_overlay_source;
+
+    std::shared_ptr<vis::StatusSource> m_status_source;
 
     std::unique_ptr<AudioSource> m_audio_source;
 

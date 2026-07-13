@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <cwchar>
 #include <locale>
+#include <limits>
 #include <stdexcept>
 
 namespace
@@ -504,7 +505,117 @@ std::wstring flight_route(const vis::Settings &settings,
     return route;
 }
 
+vis::ColorDefinition status_color(const vis::Settings &settings,
+                                  const std::string &severity)
+{
+    const auto &colors = settings.get_colors();
+    if (colors.empty())
+    {
+        return vis::ColorDefinition{0, 0, 0, 0};
+    }
+
+    auto target_red = 220;
+    auto target_green = 220;
+    auto target_blue = 220;
+    auto preferred_index = static_cast<vis::ColorIndex>(7);
+    const auto normalized = lowercase(severity);
+    if (normalized == "ok")
+    {
+        target_red = 45;
+        target_green = 220;
+        target_blue = 100;
+        preferred_index = 2;
+    }
+    else if (normalized == "warning")
+    {
+        target_red = 255;
+        target_green = 195;
+        target_blue = 30;
+        preferred_index = 3;
+    }
+    else if (normalized == "error")
+    {
+        target_red = 255;
+        target_green = 55;
+        target_blue = 70;
+        preferred_index = 1;
+    }
+
+    const auto preferred = std::find_if(
+        colors.begin(), colors.end(), [preferred_index](const auto &color) {
+            return color.get_color_index() == preferred_index;
+        });
+    const auto has_rgb = std::any_of(colors.begin(), colors.end(),
+                                     [](const auto &color) {
+                                         return color.get_red() >= 0 &&
+                                                color.get_green() >= 0 &&
+                                                color.get_blue() >= 0;
+                                     });
+    if (!has_rgb)
+    {
+        return preferred != colors.end() ? *preferred : colors.front();
+    }
+
+    auto nearest = colors.begin();
+    auto nearest_distance = std::numeric_limits<int64_t>::max();
+    for (auto candidate = colors.begin(); candidate != colors.end();
+         ++candidate)
+    {
+        if (candidate->get_red() < 0 || candidate->get_green() < 0 ||
+            candidate->get_blue() < 0)
+        {
+            continue;
+        }
+        const auto red = static_cast<int64_t>(candidate->get_red()) - target_red;
+        const auto green =
+            static_cast<int64_t>(candidate->get_green()) - target_green;
+        const auto blue =
+            static_cast<int64_t>(candidate->get_blue()) - target_blue;
+        const auto distance = red * red + green * green + blue * blue;
+        if (distance < nearest_distance)
+        {
+            nearest = candidate;
+            nearest_distance = distance;
+        }
+    }
+    return *nearest;
+}
+
 } // namespace
+
+std::vector<int32_t> vis::distribute_status_spacing(const size_t chunk_count,
+                                                    const int32_t spare_width)
+{
+    if (chunk_count < 2)
+    {
+        return {};
+    }
+
+    const auto gap_count = chunk_count - 1;
+    const auto available = std::max<int32_t>(0, spare_width);
+    const auto base = available / static_cast<int32_t>(gap_count);
+    const auto remainder = available % static_cast<int32_t>(gap_count);
+    std::vector<int32_t> spacing(gap_count, base);
+
+    auto remaining = remainder;
+    if (gap_count % 2 == 1 && remaining % 2 == 1)
+    {
+        ++spacing[gap_count / 2];
+        --remaining;
+    }
+    for (size_t index = 0; remaining >= 2; ++index)
+    {
+        ++spacing[index];
+        ++spacing[gap_count - index - 1];
+        remaining -= 2;
+    }
+    if (remaining == 1)
+    {
+        // Even gap counts cannot represent an odd spare width symmetrically.
+        ++spacing[(gap_count - 1) / 2];
+    }
+    return spacing;
+}
 
 std::wstring vis::OverlayRenderer::utf8_to_wstring(const std::string &text)
 {
@@ -950,7 +1061,8 @@ bool vis::OverlayRenderer::draw_flight_progress(
     const auto win_height = NcursesUtils::get_window_height();
     const auto has_marquee =
         settings.is_overlay_marquee_enabled() && !playback_metadata.title.empty();
-    const auto row = has_marquee
+    const auto has_header = has_marquee || settings.is_overlay_status_enabled();
+    const auto row = has_header
                          ? static_cast<int32_t>(
                                settings.get_overlay_progress_row())
                          : 0;
@@ -960,9 +1072,9 @@ bool vis::OverlayRenderer::draw_flight_progress(
     }
 
     auto route_width =
-        has_marquee ? static_cast<int32_t>(settings.get_overlay_flight_width())
-                    : win_width;
-    if (has_marquee && route_width <= 0)
+        has_header ? static_cast<int32_t>(settings.get_overlay_flight_width())
+                   : win_width;
+    if (has_header && route_width <= 0)
     {
         const auto left = status_left(settings, playback_metadata);
         const auto right = status_right(settings, playback_metadata);
@@ -992,6 +1104,141 @@ bool vis::OverlayRenderer::draw_flight_progress(
     const auto glyphs = text_to_glyphs(route, nullptr);
     draw_glyphs(writer, row, 0, color, glyphs, win_width, occupied_cells,
                 nullptr);
+    return true;
+}
+
+bool vis::OverlayRenderer::draw_status(
+    const vis::Settings &settings,
+    const std::vector<vis::StatusSegment> &segments,
+    vis::NcursesWriter *writer)
+{
+    if (!settings.is_overlay_enabled() ||
+        !settings.is_overlay_status_enabled() || writer == nullptr ||
+        segments.empty())
+    {
+        return false;
+    }
+
+    const auto win_width = NcursesUtils::get_window_width();
+    const auto win_height = NcursesUtils::get_window_height();
+    const auto row = static_cast<int32_t>(settings.get_overlay_status_row());
+    if (win_width <= 0 || win_height <= 0 || row < 0 || row >= win_height)
+    {
+        return false;
+    }
+
+    struct StatusChunk
+    {
+        std::vector<Glyph> glyphs;
+        ColorDefinition color;
+        int32_t width;
+    };
+
+    const auto left = configured_or_default(
+        settings.get_overlay_status_boundary_left(),
+        VisConstants::k_default_overlay_status_boundary_left);
+    const auto right = configured_or_default(
+        settings.get_overlay_status_boundary_right(),
+        VisConstants::k_default_overlay_status_boundary_right);
+
+    auto make_chunks = [&](const bool narrow) {
+        std::vector<StatusChunk> chunks;
+        for (const auto &segment : segments)
+        {
+            const auto &label = narrow ? segment.narrow : segment.compact;
+            if (label.empty())
+            {
+                continue;
+            }
+            auto text = left + utf8_to_wstring(label) + right;
+            int32_t width = 0;
+            auto glyphs = text_to_glyphs(text, &width);
+            chunks.push_back(StatusChunk{glyphs,
+                                         status_color(settings,
+                                                      segment.severity),
+                                         width});
+        }
+        return chunks;
+    };
+    auto chunks_width = [](const std::vector<StatusChunk> &chunks) {
+        auto width = 0;
+        for (const auto &chunk : chunks)
+        {
+            width += chunk.width;
+        }
+        return width;
+    };
+
+    auto chunks = make_chunks(false);
+    auto total_width = chunks_width(chunks);
+    if (total_width > win_width)
+    {
+        chunks = make_chunks(true);
+        total_width = chunks_width(chunks);
+    }
+    if (chunks.empty())
+    {
+        return false;
+    }
+
+    std::string signature;
+    for (const auto &segment : segments)
+    {
+        signature.append(segment.text);
+        signature.push_back('\n');
+        signature.append(segment.compact);
+        signature.push_back('\n');
+        signature.append(segment.narrow);
+        signature.push_back('\n');
+        signature.append(segment.severity);
+        signature.push_back('\n');
+    }
+    if (signature != m_status_signature)
+    {
+        m_status_signature = signature;
+        m_status_started_at = std::chrono::steady_clock::now();
+    }
+
+    writer->clear_line(row, 0);
+    auto draw_chunks = [&](const int32_t start,
+                           const std::vector<int32_t> &spacing) {
+        auto column = start;
+        for (size_t index = 0; index < chunks.size(); ++index)
+        {
+            draw_glyphs_clipped(writer, row, column, chunks[index].color,
+                                chunks[index].glyphs, 0, win_width, nullptr,
+                                nullptr);
+            column += chunks[index].width;
+            if (index < spacing.size())
+            {
+                column += spacing[index];
+            }
+        }
+    };
+
+    if (total_width <= win_width)
+    {
+        const auto spacing =
+            distribute_status_spacing(chunks.size(), win_width - total_width);
+        draw_chunks(0, spacing);
+        return true;
+    }
+
+    const auto gap =
+        std::max<int32_t>(1, settings.get_overlay_status_gap());
+    const auto cycle_width = total_width + gap;
+    const auto elapsed =
+        std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                      m_status_started_at)
+            .count();
+    const auto offset = static_cast<int32_t>(
+        std::floor(elapsed * settings.get_overlay_status_speed())) %
+                        cycle_width;
+    const std::vector<int32_t> no_spacing;
+    for (auto start = -offset; start < win_width; start += cycle_width)
+    {
+        draw_chunks(start, no_spacing);
+    }
     return true;
 }
 

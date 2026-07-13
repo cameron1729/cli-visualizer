@@ -87,3 +87,77 @@ TEST(OverlayMetadataTest, SkipsUnknownDecimalJsonValues)
     EXPECT_TRUE(parsed);
     EXPECT_EQ("ok", metadata.title);
 }
+
+TEST(OverlayMetadataTest, ParsesStatusSegmentJson)
+{
+    vis::StatusSegment segment;
+
+    const auto parsed = vis::parse_status_segment_json(
+        "{\"series\":\"405\","
+        "\"text\":\"405 4.5.12+ PATCHES STUCK 5d 2h\","
+        "\"compact\":\"405 PATCHES!5d2h\","
+        "\"narrow\":\"405 PATCHES!5d\","
+        "\"severity\":\"error\"}",
+        &segment);
+
+    EXPECT_TRUE(parsed);
+    EXPECT_EQ("405", segment.series);
+    EXPECT_EQ("405 4.5.12+ PATCHES STUCK 5d 2h", segment.text);
+    EXPECT_EQ("405 PATCHES!5d2h", segment.compact);
+    EXPECT_EQ("405 PATCHES!5d", segment.narrow);
+    EXPECT_EQ("error", segment.severity);
+}
+
+TEST(OverlayMetadataTest, StatusSegmentRequiresText)
+{
+    vis::StatusSegment segment;
+
+    EXPECT_FALSE(vis::parse_status_segment_json(
+        "{\"series\":\"405\",\"severity\":\"ok\"}", &segment));
+}
+
+TEST(OverlayMetadataTest, ParsesMultipleStatusSegmentsFromNdjson)
+{
+    std::vector<vis::StatusSegment> segments;
+    const auto parsed = vis::parse_status_segments_ndjson(
+        "{\"series\":\"401E\",\"text\":\"401E OK\","
+        "\"compact\":\"401E ✓\",\"narrow\":\"401E ✓\","
+        "\"severity\":\"ok\"}\n"
+        "\n"
+        "{\"series\":\"405\",\"text\":\"405 PATCHES STUCK\","
+        "\"compact\":\"405 STUCK\",\"severity\":\"error\"}\n",
+        &segments);
+
+    EXPECT_TRUE(parsed);
+    ASSERT_EQ(2u, segments.size());
+    EXPECT_EQ("401E ✓", segments[0].compact);
+    EXPECT_EQ("401E ✓", segments[0].narrow);
+    EXPECT_EQ("405 STUCK", segments[1].compact);
+    EXPECT_EQ("405 STUCK", segments[1].narrow);
+}
+
+TEST(OverlayMetadataTest, CurrentPipelineSeriesHaveNarrowWidthFallback)
+{
+    const std::vector<std::string> readable_waiting{
+        "401E PATCHES~2h59m", "405 PATCHES~2h59m",
+        "501 PATCHES~2h59m", "502 PATCHES~2h59m"};
+    const std::vector<std::string> narrow_waiting{
+        "401E PATCHES~2:59", "405 PATCHES~2:59", "501 PATCHES~2:59",
+        "502 PATCHES~2:59"};
+    const std::vector<std::string> narrow_stuck{
+        "401E PLUGINS!9:59", "405 PLUGINS!9:59", "501 PLUGINS!9:59",
+        "502 PLUGINS!9:59"};
+
+    auto bracketed_width = [](const std::vector<std::string> &labels) {
+        size_t width = 0;
+        for (const auto &label : labels)
+        {
+            width += label.size() + 2;
+        }
+        return width;
+    };
+
+    EXPECT_EQ(77u, bracketed_width(readable_waiting));
+    EXPECT_EQ(73u, bracketed_width(narrow_waiting));
+    EXPECT_EQ(73u, bracketed_width(narrow_stuck));
+}

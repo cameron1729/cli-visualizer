@@ -10,12 +10,16 @@
 #include "Writer/NcursesWriter.h"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 namespace vis
 {
+
+std::vector<int32_t> distribute_status_spacing(size_t chunk_count,
+                                               int32_t spare_width);
 
 class OverlayRenderer
 {
@@ -37,6 +41,9 @@ class OverlayRenderer
                               NcursesWriter *writer,
                               const std::vector<std::vector<uint8_t>>
                                   *occupied_cells = nullptr);
+    bool draw_status(const Settings &settings,
+                     const std::vector<StatusSegment> &segments,
+                     NcursesWriter *writer);
     bool has_fall_animation() const noexcept;
     bool is_fall_animation_active() const noexcept;
 
@@ -103,6 +110,8 @@ class OverlayRenderer
     std::vector<FallingGlyph> m_falling_overlay;
     std::chrono::steady_clock::time_point m_fall_started_at;
     bool m_last_frame_was_live{false};
+    std::string m_status_signature;
+    std::chrono::steady_clock::time_point m_status_started_at;
 };
 
 } // namespace vis

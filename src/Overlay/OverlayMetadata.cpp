@@ -7,6 +7,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <limits>
+#include <sstream>
 #include <string>
 
 namespace
@@ -463,4 +464,141 @@ bool vis::parse_overlay_metadata_json(const std::string &json,
     }
 
     return false;
+}
+
+bool vis::parse_status_segment_json(const std::string &json,
+                                    vis::StatusSegment *segment)
+{
+    if (segment == nullptr)
+    {
+        return false;
+    }
+
+    StatusSegment parsed;
+    size_t pos = 0;
+    if (!consume(json, &pos, '{'))
+    {
+        return false;
+    }
+
+    skip_ws(json, &pos);
+    if (pos < json.size() && json[pos] == '}')
+    {
+        return false;
+    }
+
+    while (pos < json.size())
+    {
+        std::string key;
+        if (!parse_json_string(json, &pos, &key) || !consume(json, &pos, ':'))
+        {
+            return false;
+        }
+
+        if (key == "series")
+        {
+            if (!parse_json_string(json, &pos, &parsed.series))
+            {
+                return false;
+            }
+        }
+        else if (key == "text")
+        {
+            if (!parse_json_string(json, &pos, &parsed.text))
+            {
+                return false;
+            }
+        }
+        else if (key == "compact")
+        {
+            if (!parse_json_string(json, &pos, &parsed.compact))
+            {
+                return false;
+            }
+        }
+        else if (key == "narrow")
+        {
+            if (!parse_json_string(json, &pos, &parsed.narrow))
+            {
+                return false;
+            }
+        }
+        else if (key == "severity")
+        {
+            if (!parse_json_string(json, &pos, &parsed.severity))
+            {
+                return false;
+            }
+        }
+        else if (!skip_json_value(json, &pos))
+        {
+            return false;
+        }
+
+        skip_ws(json, &pos);
+        if (pos < json.size() && json[pos] == ',')
+        {
+            ++pos;
+            continue;
+        }
+        if (pos < json.size() && json[pos] == '}')
+        {
+            ++pos;
+            skip_ws(json, &pos);
+            if (pos != json.size() || parsed.text.empty())
+            {
+                return false;
+            }
+            if (parsed.compact.empty())
+            {
+                parsed.compact = parsed.text;
+            }
+            if (parsed.narrow.empty())
+            {
+                parsed.narrow = parsed.compact;
+            }
+            if (parsed.severity.empty())
+            {
+                parsed.severity = "info";
+            }
+            *segment = parsed;
+            return true;
+        }
+        return false;
+    }
+
+    return false;
+}
+
+bool vis::parse_status_segments_ndjson(
+    const std::string &ndjson, std::vector<vis::StatusSegment> *segments)
+{
+    if (segments == nullptr)
+    {
+        return false;
+    }
+
+    std::istringstream lines{ndjson};
+    std::string line;
+    std::vector<StatusSegment> parsed;
+    while (std::getline(lines, line))
+    {
+        if (line.find_first_not_of(" \t\r") == std::string::npos)
+        {
+            continue;
+        }
+        StatusSegment segment;
+        if (!parse_status_segment_json(line, &segment))
+        {
+            return false;
+        }
+        parsed.push_back(segment);
+    }
+    if (parsed.empty())
+    {
+        return false;
+    }
+
+    *segments = parsed;
+    return true;
 }

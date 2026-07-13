@@ -42,10 +42,12 @@ vis::SpectrumTransformer::SpectrumTransformer(
     const std::shared_ptr<const vis::Settings> settings,
     const std::string &name,
     std::shared_ptr<vis::OverlaySource> bgv_overlay_source,
-    std::shared_ptr<vis::OverlaySource> flight_overlay_source)
+    std::shared_ptr<vis::OverlaySource> flight_overlay_source,
+    std::shared_ptr<vis::StatusSource> status_source)
     : GenericTransformer(name), m_settings{settings},
       m_bgv_overlay_source{std::move(bgv_overlay_source)},
       m_flight_overlay_source{std::move(flight_overlay_source)},
+      m_status_source{std::move(status_source)},
       m_fftw_results{0},
       m_fftw_input_left{nullptr}, m_fftw_input_right{nullptr},
       m_fftw_output_left{nullptr}, m_fftw_output_right{nullptr},
@@ -214,6 +216,7 @@ void vis::SpectrumTransformer::execute(pcm_stereo_sample *buffer,
 
         draw_flight_overlay(writer, &occupied_cells);
         draw_overlay(writer, &occupied_cells);
+        draw_status_overlay(writer);
 
         writer->flush();
 
@@ -271,9 +274,21 @@ bool vis::SpectrumTransformer::draw_flight_overlay(
         occupied_cells);
 }
 
+bool vis::SpectrumTransformer::draw_status_overlay(
+    vis::NcursesWriter *writer)
+{
+    if (m_status_source == nullptr || writer == nullptr)
+    {
+        return false;
+    }
+    return m_overlay_renderer.draw_status(
+        *m_settings, m_status_source->get_segments(), writer);
+}
+
 bool vis::SpectrumTransformer::has_drawable_overlay() const
 {
-    if ((m_bgv_overlay_source == nullptr && m_flight_overlay_source == nullptr) ||
+    if ((m_bgv_overlay_source == nullptr && m_flight_overlay_source == nullptr &&
+         m_status_source == nullptr) ||
         !m_settings->is_overlay_enabled())
     {
         return false;
@@ -291,6 +306,12 @@ bool vis::SpectrumTransformer::has_drawable_overlay() const
     }
 
     if (m_settings->is_overlay_marquee_enabled() && !metadata.title.empty())
+    {
+        return true;
+    }
+
+    if (m_settings->is_overlay_status_enabled() &&
+        m_status_source != nullptr && !m_status_source->get_segments().empty())
     {
         return true;
     }
@@ -362,6 +383,7 @@ bool vis::SpectrumTransformer::draw_cached_frame(vis::NcursesWriter *writer,
 
     draw_flight_overlay(writer, &occupied_cells);
     draw_overlay(writer, &occupied_cells);
+    draw_status_overlay(writer);
 
     writer->flush();
     return true;

@@ -78,13 +78,22 @@
 ##Flight route marker strings selected by target direction.
 #visualizer.overlay.flight.plane.left=⮜
 #visualizer.overlay.flight.plane.right=⮞
+##Generic one-line status feed. The command emits one flat JSON object per line.
+#visualizer.overlay.status.enabled=true
+#visualizer.overlay.status.command=moodle pipeline status --format ndjson
+#visualizer.overlay.status.poll.ms=60000
+#visualizer.overlay.status.row=0
+#visualizer.overlay.status.speed=4
+#visualizer.overlay.status.gap=4
+#visualizer.overlay.status.boundary.left=[
+#visualizer.overlay.status.boundary.right=]
 ##Legacy single-command config is still supported:
 #visualizer.overlay.command=bgv status --json
 #visualizer.overlay.poll.ms=1000
 
 ##Draw a scrolling title behind the spectrum bars.
 #visualizer.overlay.marquee.enabled=true
-#visualizer.overlay.marquee.row=0
+#visualizer.overlay.marquee.row=1
 #visualizer.overlay.marquee.speed=8
 #visualizer.overlay.marquee.gap=12
 #visualizer.overlay.marquee.boundary.enabled=true
@@ -93,7 +102,7 @@
 
 ##Draw playback status and progress behind the spectrum bars.
 #visualizer.overlay.progress.enabled=true
-#visualizer.overlay.progress.row=1
+#visualizer.overlay.progress.row=2
 #visualizer.overlay.progress.align=right
 #visualizer.overlay.progress.width=18
 #visualizer.overlay.progress.status.enabled=true

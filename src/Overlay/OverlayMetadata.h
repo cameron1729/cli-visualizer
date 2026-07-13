@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace vis
 {
@@ -42,8 +43,26 @@ struct OverlayMetadata
     }
 };
 
+struct StatusSegment
+{
+    std::string series;
+    std::string text;
+    std::string compact;
+    std::string narrow;
+    std::string severity;
+
+    bool empty() const noexcept
+    {
+        return text.empty();
+    }
+};
+
 bool parse_overlay_metadata_json(const std::string &json,
                                  OverlayMetadata *metadata);
+bool parse_status_segment_json(const std::string &json,
+                               StatusSegment *segment);
+bool parse_status_segments_ndjson(const std::string &ndjson,
+                                  std::vector<StatusSegment> *segments);
 
 } // namespace vis
 

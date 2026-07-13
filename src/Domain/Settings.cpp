@@ -55,6 +55,17 @@ vis::Settings::Settings(std::string config_path)
           VisConstants::k_default_overlay_flight_plane_left},
       m_overlay_flight_plane_right{
           VisConstants::k_default_overlay_flight_plane_right},
+      m_overlay_status_enabled{VisConstants::k_default_overlay_status_enabled},
+      m_overlay_status_command{VisConstants::k_default_overlay_status_command},
+      m_overlay_status_poll_ms{
+          VisConstants::k_default_overlay_status_poll_ms},
+      m_overlay_status_row{VisConstants::k_default_overlay_status_row},
+      m_overlay_status_speed{VisConstants::k_default_overlay_status_speed},
+      m_overlay_status_gap{VisConstants::k_default_overlay_status_gap},
+      m_overlay_status_boundary_left{
+          VisConstants::k_default_overlay_status_boundary_left},
+      m_overlay_status_boundary_right{
+          VisConstants::k_default_overlay_status_boundary_right},
       m_overlay_marquee_enabled{
           VisConstants::k_default_overlay_marquee_enabled},
       m_overlay_marquee_row{VisConstants::k_default_overlay_marquee_row},
