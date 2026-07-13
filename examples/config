@@ -65,9 +65,20 @@
 ##Reverses the direction of the spectrum so that high freqs are first and low freqs last. Defaults to false.
 #visualizer.spectrum.reversed=false
 
-##Optional metadata overlay. The command should print one flat JSON object with fields:
-##title, category, playback, position_ms, duration_ms.
+##Optional metadata overlay. BGV and flight commands are polled independently.
 #visualizer.overlay.enabled=true
+#visualizer.overlay.bgv.enabled=true
+#visualizer.overlay.bgv.command=bgv status --json
+#visualizer.overlay.bgv.poll.ms=1000
+#visualizer.overlay.flight.enabled=true
+#visualizer.overlay.flight.command=flight-progress --json
+#visualizer.overlay.flight.poll.ms=60000
+##Flight route width in terminal cells. Set 0 to auto-fit before the right-aligned playback status.
+#visualizer.overlay.flight.width=42
+##Flight route marker strings selected by target direction.
+#visualizer.overlay.flight.plane.left=⮜
+#visualizer.overlay.flight.plane.right=⮞
+##Legacy single-command config is still supported:
 #visualizer.overlay.command=bgv status --json
 #visualizer.overlay.poll.ms=1000
 

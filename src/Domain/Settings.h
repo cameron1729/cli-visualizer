@@ -385,6 +385,99 @@ class Settings
         m_overlay_poll_ms = overlay_poll_ms;
     }
 
+    bool is_overlay_bgv_enabled() const noexcept
+    {
+        return m_overlay_bgv_enabled;
+    }
+
+    void set_overlay_bgv_enabled(bool overlay_bgv_enabled)
+    {
+        m_overlay_bgv_enabled = overlay_bgv_enabled;
+    }
+
+    const std::string &get_overlay_bgv_command() const noexcept
+    {
+        return m_overlay_bgv_command;
+    }
+
+    void set_overlay_bgv_command(const std::string &overlay_bgv_command)
+    {
+        m_overlay_bgv_command = overlay_bgv_command;
+    }
+
+    uint32_t get_overlay_bgv_poll_ms() const noexcept
+    {
+        return m_overlay_bgv_poll_ms;
+    }
+
+    void set_overlay_bgv_poll_ms(uint32_t overlay_bgv_poll_ms)
+    {
+        m_overlay_bgv_poll_ms = overlay_bgv_poll_ms;
+    }
+
+    bool is_overlay_flight_enabled() const noexcept
+    {
+        return m_overlay_flight_enabled;
+    }
+
+    void set_overlay_flight_enabled(bool overlay_flight_enabled)
+    {
+        m_overlay_flight_enabled = overlay_flight_enabled;
+    }
+
+    const std::string &get_overlay_flight_command() const noexcept
+    {
+        return m_overlay_flight_command;
+    }
+
+    void set_overlay_flight_command(
+        const std::string &overlay_flight_command)
+    {
+        m_overlay_flight_command = overlay_flight_command;
+    }
+
+    uint32_t get_overlay_flight_poll_ms() const noexcept
+    {
+        return m_overlay_flight_poll_ms;
+    }
+
+    void set_overlay_flight_poll_ms(uint32_t overlay_flight_poll_ms)
+    {
+        m_overlay_flight_poll_ms = overlay_flight_poll_ms;
+    }
+
+    uint32_t get_overlay_flight_width() const noexcept
+    {
+        return m_overlay_flight_width;
+    }
+
+    void set_overlay_flight_width(uint32_t overlay_flight_width)
+    {
+        m_overlay_flight_width = overlay_flight_width;
+    }
+
+    const std::wstring &get_overlay_flight_plane_left() const noexcept
+    {
+        return m_overlay_flight_plane_left;
+    }
+
+    void set_overlay_flight_plane_left(
+        const std::wstring &overlay_flight_plane_left)
+    {
+        m_overlay_flight_plane_left = overlay_flight_plane_left;
+    }
+
+    const std::wstring &get_overlay_flight_plane_right() const noexcept
+    {
+        return m_overlay_flight_plane_right;
+    }
+
+    void set_overlay_flight_plane_right(
+        const std::wstring &overlay_flight_plane_right)
+    {
+        m_overlay_flight_plane_right = overlay_flight_plane_right;
+    }
+
     bool is_overlay_marquee_enabled() const noexcept
     {
         return m_overlay_marquee_enabled;
@@ -644,6 +737,15 @@ class Settings
     bool m_overlay_enabled;
     std::string m_overlay_command;
     uint32_t m_overlay_poll_ms;
+    bool m_overlay_bgv_enabled;
+    std::string m_overlay_bgv_command;
+    uint32_t m_overlay_bgv_poll_ms;
+    bool m_overlay_flight_enabled;
+    std::string m_overlay_flight_command;
+    uint32_t m_overlay_flight_poll_ms;
+    uint32_t m_overlay_flight_width;
+    std::wstring m_overlay_flight_plane_left;
+    std::wstring m_overlay_flight_plane_right;
     bool m_overlay_marquee_enabled;
     uint32_t m_overlay_marquee_row;
     double m_overlay_marquee_speed;

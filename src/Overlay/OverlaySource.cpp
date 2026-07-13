@@ -31,16 +31,25 @@ vis::OverlaySource::~OverlaySource()
 void vis::OverlaySource::configure(
     const std::shared_ptr<const vis::Settings> &settings)
 {
+    configure(settings != nullptr && settings->is_overlay_enabled() &&
+                  settings->is_overlay_bgv_enabled(),
+              settings != nullptr ? settings->get_overlay_bgv_command() : "",
+              settings != nullptr ? settings->get_overlay_bgv_poll_ms()
+                                  : k_default_poll_ms);
+}
+
+void vis::OverlaySource::configure(const bool enabled,
+                                   const std::string &command,
+                                   const uint32_t poll_ms)
+{
     stop();
 
     {
         std::lock_guard<std::mutex> lock{m_mutex};
         m_metadata = OverlayMetadata{};
-        m_enabled = settings != nullptr && settings->is_overlay_enabled() &&
-                    !settings->get_overlay_command().empty();
-        m_command = settings != nullptr ? settings->get_overlay_command() : "";
-        m_poll_ms = settings != nullptr ? settings->get_overlay_poll_ms()
-                                        : k_default_poll_ms;
+        m_enabled = enabled && !command.empty();
+        m_command = command;
+        m_poll_ms = poll_ms;
         if (m_poll_ms == 0)
         {
             m_poll_ms = k_default_poll_ms;

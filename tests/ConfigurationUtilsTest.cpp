@@ -1,8 +1,11 @@
 #include <Utils/ConfigurationUtils.h>
 #include <Utils/Utils.h>
+#include <cstdio>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <ncurses.h>
+#include <unistd.h>
 
 namespace vis
 {
@@ -18,10 +21,83 @@ void ConfigurationUtilsTest::testing_method()
 {
 }
 
+namespace
+{
+std::string write_temp_config(const std::string &content)
+{
+    const auto path = "/tmp/vis-config-test-" + std::to_string(getpid()) +
+                      ".conf";
+    std::ofstream file{path};
+    file << content;
+    file.close();
+    return path;
+}
+} // namespace
+
 TEST_F(ConfigurationUtilsTest, GetGradientIntervalSingle)
 {
     EXPECT_EQ(255, get_gradient_interval(1, 256))
         << "gradient interval failed with single value";
+}
+
+TEST_F(ConfigurationUtilsTest, LegacyOverlayCommandConfiguresBgvSource)
+{
+    const auto path = write_temp_config(
+        "visualizer.overlay.enabled=true\n"
+        "visualizer.overlay.command=bgv status --json\n"
+        "visualizer.overlay.poll.ms=1234\n");
+    auto settings = std::make_shared<vis::Settings>(path);
+
+    load_settings(settings, path, std::locale(""));
+
+    EXPECT_TRUE(settings->is_overlay_enabled());
+    EXPECT_TRUE(settings->is_overlay_bgv_enabled());
+    EXPECT_EQ("bgv status --json", settings->get_overlay_bgv_command());
+    EXPECT_EQ(1234, settings->get_overlay_bgv_poll_ms());
+    std::remove(path.c_str());
+}
+
+TEST_F(ConfigurationUtilsTest, NamedOverlaySourcesUseIndependentCommands)
+{
+    const auto path = write_temp_config(
+        "visualizer.overlay.enabled=true\n"
+        "visualizer.overlay.bgv.enabled=true\n"
+        "visualizer.overlay.bgv.command=bgv status --json\n"
+        "visualizer.overlay.bgv.poll.ms=1000\n"
+        "visualizer.overlay.flight.enabled=true\n"
+        "visualizer.overlay.flight.command=flight-progress --json\n"
+        "visualizer.overlay.flight.poll.ms=15000\n");
+    auto settings = std::make_shared<vis::Settings>(path);
+
+    load_settings(settings, path, std::locale(""));
+
+    EXPECT_TRUE(settings->is_overlay_bgv_enabled());
+    EXPECT_EQ("bgv status --json", settings->get_overlay_bgv_command());
+    EXPECT_EQ(1000, settings->get_overlay_bgv_poll_ms());
+    EXPECT_TRUE(settings->is_overlay_flight_enabled());
+    EXPECT_EQ("flight-progress --json", settings->get_overlay_flight_command());
+    EXPECT_EQ(15000, settings->get_overlay_flight_poll_ms());
+    EXPECT_EQ(0, settings->get_overlay_flight_width());
+    std::remove(path.c_str());
+}
+
+TEST_F(ConfigurationUtilsTest, FlightOverlayWidthCanBeConfigured)
+{
+    const auto path = write_temp_config(
+        "visualizer.overlay.enabled=true\n"
+        "visualizer.overlay.flight.enabled=true\n"
+        "visualizer.overlay.flight.command=flight-progress --json\n"
+        "visualizer.overlay.flight.width=42\n"
+        "visualizer.overlay.flight.plane.left=<-plane\n"
+        "visualizer.overlay.flight.plane.right=plane->\n");
+    auto settings = std::make_shared<vis::Settings>(path);
+
+    load_settings(settings, path, std::locale(""));
+
+    EXPECT_EQ(42, settings->get_overlay_flight_width());
+    EXPECT_EQ(L"<-plane", settings->get_overlay_flight_plane_left());
+    EXPECT_EQ(L"plane->", settings->get_overlay_flight_plane_right());
+    std::remove(path.c_str());
 }
 
 TEST_F(ConfigurationUtilsTest, GetGradientIntervalTwo)

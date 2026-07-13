@@ -30,6 +30,8 @@ class OverlaySource
     OverlaySource &operator=(OverlaySource &&) = delete;
 
     void configure(const std::shared_ptr<const Settings> &settings);
+    void configure(bool enabled, const std::string &command,
+                   uint32_t poll_ms);
     OverlayMetadata get_metadata() const;
 
   private:

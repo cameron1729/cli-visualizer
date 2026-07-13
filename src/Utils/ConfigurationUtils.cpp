@@ -85,6 +85,24 @@ const std::string k_sgs_smoothing_passes_setting{
 const std::string k_overlay_enabled_setting{"visualizer.overlay.enabled"};
 const std::string k_overlay_command_setting{"visualizer.overlay.command"};
 const std::string k_overlay_poll_ms_setting{"visualizer.overlay.poll.ms"};
+const std::string k_overlay_bgv_enabled_setting{
+    "visualizer.overlay.bgv.enabled"};
+const std::string k_overlay_bgv_command_setting{
+    "visualizer.overlay.bgv.command"};
+const std::string k_overlay_bgv_poll_ms_setting{
+    "visualizer.overlay.bgv.poll.ms"};
+const std::string k_overlay_flight_enabled_setting{
+    "visualizer.overlay.flight.enabled"};
+const std::string k_overlay_flight_command_setting{
+    "visualizer.overlay.flight.command"};
+const std::string k_overlay_flight_poll_ms_setting{
+    "visualizer.overlay.flight.poll.ms"};
+const std::string k_overlay_flight_width_setting{
+    "visualizer.overlay.flight.width"};
+const std::string k_overlay_flight_plane_left_setting{
+    "visualizer.overlay.flight.plane.left"};
+const std::string k_overlay_flight_plane_right_setting{
+    "visualizer.overlay.flight.plane.right"};
 const std::string k_overlay_marquee_enabled_setting{
     "visualizer.overlay.marquee.enabled"};
 const std::string k_overlay_marquee_row_setting{
@@ -811,6 +829,56 @@ void vis::ConfigurationUtils::load_settings(
                    VisConstants::k_default_overlay_poll_ms));
     validate_setting_is_greater_than_zero(settings->get_overlay_poll_ms(),
                                           k_overlay_poll_ms_setting);
+
+    const auto legacy_overlay_command = settings->get_overlay_command();
+    const auto legacy_overlay_poll_ms = settings->get_overlay_poll_ms();
+    const auto has_legacy_overlay_command = !legacy_overlay_command.empty();
+
+    settings->set_overlay_bgv_enabled(
+        Utils::get(properties, k_overlay_bgv_enabled_setting,
+                   has_legacy_overlay_command ||
+                       VisConstants::k_default_overlay_bgv_enabled));
+
+    settings->set_overlay_bgv_command(
+        Utils::get(properties, k_overlay_bgv_command_setting,
+                   has_legacy_overlay_command
+                       ? legacy_overlay_command
+                       : VisConstants::k_default_overlay_bgv_command));
+
+    settings->set_overlay_bgv_poll_ms(
+        Utils::get(properties, k_overlay_bgv_poll_ms_setting,
+                   has_legacy_overlay_command
+                       ? legacy_overlay_poll_ms
+                       : VisConstants::k_default_overlay_bgv_poll_ms));
+    validate_setting_is_greater_than_zero(settings->get_overlay_bgv_poll_ms(),
+                                          k_overlay_bgv_poll_ms_setting);
+
+    settings->set_overlay_flight_enabled(
+        Utils::get(properties, k_overlay_flight_enabled_setting,
+                   VisConstants::k_default_overlay_flight_enabled));
+
+    settings->set_overlay_flight_command(
+        Utils::get(properties, k_overlay_flight_command_setting,
+                   VisConstants::k_default_overlay_flight_command));
+
+    settings->set_overlay_flight_poll_ms(
+        Utils::get(properties, k_overlay_flight_poll_ms_setting,
+                   VisConstants::k_default_overlay_flight_poll_ms));
+    validate_setting_is_greater_than_zero(
+        settings->get_overlay_flight_poll_ms(),
+        k_overlay_flight_poll_ms_setting);
+
+    settings->set_overlay_flight_width(
+        Utils::get(properties, k_overlay_flight_width_setting,
+                   VisConstants::k_default_overlay_flight_width));
+
+    settings->set_overlay_flight_plane_left(
+        Utils::get(properties, k_overlay_flight_plane_left_setting,
+                   VisConstants::k_default_overlay_flight_plane_left));
+
+    settings->set_overlay_flight_plane_right(
+        Utils::get(properties, k_overlay_flight_plane_right_setting,
+                   VisConstants::k_default_overlay_flight_plane_right));
 
     settings->set_overlay_marquee_enabled(
         Utils::get(properties, k_overlay_marquee_enabled_setting,

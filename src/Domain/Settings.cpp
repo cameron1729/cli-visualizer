@@ -41,6 +41,20 @@ vis::Settings::Settings(std::string config_path)
       m_overlay_enabled{VisConstants::k_default_overlay_enabled},
       m_overlay_command{VisConstants::k_default_overlay_command},
       m_overlay_poll_ms{VisConstants::k_default_overlay_poll_ms},
+      m_overlay_bgv_enabled{VisConstants::k_default_overlay_bgv_enabled},
+      m_overlay_bgv_command{VisConstants::k_default_overlay_bgv_command},
+      m_overlay_bgv_poll_ms{VisConstants::k_default_overlay_bgv_poll_ms},
+      m_overlay_flight_enabled{
+          VisConstants::k_default_overlay_flight_enabled},
+      m_overlay_flight_command{
+          VisConstants::k_default_overlay_flight_command},
+      m_overlay_flight_poll_ms{
+          VisConstants::k_default_overlay_flight_poll_ms},
+      m_overlay_flight_width{VisConstants::k_default_overlay_flight_width},
+      m_overlay_flight_plane_left{
+          VisConstants::k_default_overlay_flight_plane_left},
+      m_overlay_flight_plane_right{
+          VisConstants::k_default_overlay_flight_plane_right},
       m_overlay_marquee_enabled{
           VisConstants::k_default_overlay_marquee_enabled},
       m_overlay_marquee_row{VisConstants::k_default_overlay_marquee_row},
