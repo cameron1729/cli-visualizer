@@ -158,7 +158,7 @@ if(VIS_WITH_TESTS)
     ExternalProject_Add(googletest
       PREFIX ${EXTERNAL_PROJECTS_DIR}
       GIT_REPOSITORY "https://github.com/google/googletest.git"
-      GIT_TAG ${gtest_version}
+      GIT_TAG v1.12.0
       CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX=${EXTERNAL_PROJECTS_DIR}
     )
 
@@ -205,8 +205,9 @@ if(VIS_WITH_TESTS)
         ${VIS_PROJECT_TEST_FILES}
     )
 
-    target_include_directories(${PROJECT_TEST_NAME} INTERFACE
+    target_include_directories(${PROJECT_TEST_NAME} PRIVATE
         ${PROJECT_SOURCE_DIR}/tests
+        ${EXTERNAL_PROJECTS_INCLUDE_DIR}
     )
 
     target_link_libraries(${PROJECT_TEST_NAME} gtest gmock pthread)
@@ -339,5 +340,4 @@ if(${VIS_RUN_CLANG_TIDY})
       )
     endif()
 endif()
-
 
