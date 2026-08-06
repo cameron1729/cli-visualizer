@@ -62,6 +62,16 @@ vis::Settings::Settings(std::string config_path)
       m_overlay_status_row{VisConstants::k_default_overlay_status_row},
       m_overlay_status_speed{VisConstants::k_default_overlay_status_speed},
       m_overlay_status_gap{VisConstants::k_default_overlay_status_gap},
+      m_overlay_status_page_hold_ms{
+          VisConstants::k_default_overlay_status_page_hold_ms},
+      m_overlay_status_page_transition_ms{
+          VisConstants::k_default_overlay_status_page_transition_ms},
+      m_overlay_status_layout{
+          VisConstants::k_default_overlay_status_layout},
+      m_overlay_status_moodle_prefix{
+          VisConstants::k_default_overlay_status_moodle_prefix},
+      m_overlay_status_workplace_prefix{
+          VisConstants::k_default_overlay_status_workplace_prefix},
       m_overlay_status_boundary_left{
           VisConstants::k_default_overlay_status_boundary_left},
       m_overlay_status_boundary_right{

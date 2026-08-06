@@ -530,6 +530,20 @@ bool vis::parse_status_segment_json(const std::string &json,
                 return false;
             }
         }
+        else if (key == "state_key")
+        {
+            if (!parse_json_string(json, &pos, &parsed.state_key))
+            {
+                return false;
+            }
+        }
+        else if (key == "full_width")
+        {
+            if (!parse_json_bool(json, &pos, &parsed.full_width))
+            {
+                return false;
+            }
+        }
         else if (!skip_json_value(json, &pos))
         {
             return false;

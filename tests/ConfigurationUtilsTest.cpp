@@ -110,6 +110,11 @@ TEST_F(ConfigurationUtilsTest, StatusOverlayCanBeConfigured)
         "visualizer.overlay.status.row=0\n"
         "visualizer.overlay.status.speed=4.5\n"
         "visualizer.overlay.status.gap=6\n"
+        "visualizer.overlay.status.page.hold.ms=90000\n"
+        "visualizer.overlay.status.page.transition.ms=1500\n"
+        "visualizer.overlay.status.layout=families\n"
+        "visualizer.overlay.status.moodle.prefix=🎓\n"
+        "visualizer.overlay.status.workplace.prefix=🏢\n"
         "visualizer.overlay.status.boundary.left=<\n"
         "visualizer.overlay.status.boundary.right=>\n");
     auto settings = std::make_shared<vis::Settings>(path);
@@ -123,6 +128,12 @@ TEST_F(ConfigurationUtilsTest, StatusOverlayCanBeConfigured)
     EXPECT_EQ(0, settings->get_overlay_status_row());
     EXPECT_DOUBLE_EQ(4.5, settings->get_overlay_status_speed());
     EXPECT_EQ(6, settings->get_overlay_status_gap());
+    EXPECT_EQ(90000, settings->get_overlay_status_page_hold_ms());
+    EXPECT_EQ(1500, settings->get_overlay_status_page_transition_ms());
+    EXPECT_EQ("families", settings->get_overlay_status_layout());
+    EXPECT_EQ(L"\U0001F393", settings->get_overlay_status_moodle_prefix());
+    EXPECT_EQ(L"\U0001F3E2",
+              settings->get_overlay_status_workplace_prefix());
     EXPECT_EQ(L"<", settings->get_overlay_status_boundary_left());
     EXPECT_EQ(L">", settings->get_overlay_status_boundary_right());
     std::remove(path.c_str());

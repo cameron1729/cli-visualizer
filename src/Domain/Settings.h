@@ -538,6 +538,63 @@ class Settings
         m_overlay_status_gap = overlay_status_gap;
     }
 
+    uint32_t get_overlay_status_page_hold_ms() const noexcept
+    {
+        return m_overlay_status_page_hold_ms;
+    }
+
+    void set_overlay_status_page_hold_ms(
+        uint32_t overlay_status_page_hold_ms)
+    {
+        m_overlay_status_page_hold_ms = overlay_status_page_hold_ms;
+    }
+
+    uint32_t get_overlay_status_page_transition_ms() const noexcept
+    {
+        return m_overlay_status_page_transition_ms;
+    }
+
+    void set_overlay_status_page_transition_ms(
+        uint32_t overlay_status_page_transition_ms)
+    {
+        m_overlay_status_page_transition_ms =
+            overlay_status_page_transition_ms;
+    }
+
+    const std::string &get_overlay_status_layout() const noexcept
+    {
+        return m_overlay_status_layout;
+    }
+
+    void set_overlay_status_layout(
+        const std::string &overlay_status_layout)
+    {
+        m_overlay_status_layout = overlay_status_layout;
+    }
+
+    const std::wstring &get_overlay_status_moodle_prefix() const noexcept
+    {
+        return m_overlay_status_moodle_prefix;
+    }
+
+    void set_overlay_status_moodle_prefix(
+        const std::wstring &overlay_status_moodle_prefix)
+    {
+        m_overlay_status_moodle_prefix = overlay_status_moodle_prefix;
+    }
+
+    const std::wstring &get_overlay_status_workplace_prefix() const noexcept
+    {
+        return m_overlay_status_workplace_prefix;
+    }
+
+    void set_overlay_status_workplace_prefix(
+        const std::wstring &overlay_status_workplace_prefix)
+    {
+        m_overlay_status_workplace_prefix =
+            overlay_status_workplace_prefix;
+    }
+
     const std::wstring &get_overlay_status_boundary_left() const noexcept
     {
         return m_overlay_status_boundary_left;
@@ -834,6 +891,11 @@ class Settings
     uint32_t m_overlay_status_row;
     double m_overlay_status_speed;
     uint32_t m_overlay_status_gap;
+    uint32_t m_overlay_status_page_hold_ms;
+    uint32_t m_overlay_status_page_transition_ms;
+    std::string m_overlay_status_layout;
+    std::wstring m_overlay_status_moodle_prefix;
+    std::wstring m_overlay_status_workplace_prefix;
     std::wstring m_overlay_status_boundary_left;
     std::wstring m_overlay_status_boundary_right;
     bool m_overlay_marquee_enabled;

@@ -28,6 +28,12 @@ const std::string k_playback_playing{"playing"};
 const std::string k_playback_paused{"paused"};
 const std::string k_playback_stopped{"stopped"};
 
+double ease_in_out(const double progress)
+{
+    const auto clamped = std::min(1.0, std::max(0.0, progress));
+    return clamped * clamped * (3.0 - 2.0 * clamped);
+}
+
 struct FlightMarker
 {
     int64_t progress_per_mille{0};
@@ -42,6 +48,16 @@ std::string lowercase(std::string value)
                        return static_cast<char>(std::tolower(ch));
                    });
     return value;
+}
+
+bool has_live_playback(const vis::OverlayMetadata &metadata)
+{
+    const auto playback = lowercase(metadata.playback);
+    const auto has_playback_payload =
+        !metadata.title.empty() || !metadata.playback.empty() ||
+        metadata.duration_ms > 0 || metadata.position_ms > 0;
+
+    return has_playback_payload && playback != k_playback_stopped;
 }
 
 std::wstring ascii_to_wstring(const std::string &text)
@@ -617,6 +633,311 @@ std::vector<int32_t> vis::distribute_status_spacing(const size_t chunk_count,
     return spacing;
 }
 
+std::vector<int32_t> vis::aligned_status_columns(
+    const std::vector<int32_t> &column_widths, const int32_t content_left,
+    const int32_t total_width)
+{
+    if (column_widths.empty() || content_left < 0 ||
+        content_left >= total_width)
+    {
+        return {};
+    }
+
+    auto columns_width = 0;
+    for (const auto width : column_widths)
+    {
+        if (width <= 0)
+        {
+            return {};
+        }
+        columns_width += width;
+    }
+    const auto available_width = total_width - content_left;
+    if (columns_width > available_width)
+    {
+        return {};
+    }
+
+    const auto spacing = distribute_status_spacing(
+        column_widths.size(), available_width - columns_width);
+    std::vector<int32_t> columns;
+    columns.reserve(column_widths.size());
+    auto column = content_left;
+    for (size_t index = 0; index < column_widths.size(); ++index)
+    {
+        columns.push_back(column);
+        column += column_widths[index];
+        if (index < spacing.size())
+        {
+            column += spacing[index];
+        }
+    }
+    return columns;
+}
+
+std::vector<std::vector<size_t>>
+vis::pack_status_pages_with_adaptive_gaps(
+    const std::vector<int32_t> &chunk_widths,
+    const int32_t available_width, const int32_t preferred_gap)
+{
+    std::vector<std::vector<size_t>> pages;
+    if (chunk_widths.empty() || available_width <= 0)
+    {
+        return pages;
+    }
+
+    const auto preferred = std::max<int32_t>(1, preferred_gap);
+    constexpr int32_t minimum_gap = 1;
+    std::vector<size_t> page;
+    auto chunks_width = 0;
+
+    for (size_t index = 0; index < chunk_widths.size(); ++index)
+    {
+        const auto width = chunk_widths[index];
+        if (width <= 0)
+        {
+            continue;
+        }
+        if (width > available_width)
+        {
+            if (!page.empty())
+            {
+                pages.push_back(page);
+                page.clear();
+                chunks_width = 0;
+            }
+            pages.push_back({index});
+            continue;
+        }
+
+        const auto gap_count = static_cast<int32_t>(page.size());
+        const auto preferred_width =
+            chunks_width + width + gap_count * preferred;
+        const auto minimum_width =
+            chunks_width + width + gap_count * minimum_gap;
+        if (!page.empty() && preferred_width > available_width &&
+            minimum_width > available_width)
+        {
+            pages.push_back(page);
+            page.clear();
+            chunks_width = 0;
+        }
+
+        page.push_back(index);
+        chunks_width += width;
+    }
+
+    if (!page.empty())
+    {
+        pages.push_back(page);
+    }
+    return pages;
+}
+
+vis::StatusPageLayout vis::layout_status_pages(
+    const std::vector<int32_t> &chunk_widths,
+    const std::vector<bool> &unhealthy,
+    const std::vector<int32_t> &severity_priorities,
+    const int32_t available_width, const int32_t requested_gap)
+{
+    StatusPageLayout layout;
+    if (chunk_widths.empty() || chunk_widths.size() != unhealthy.size() ||
+        chunk_widths.size() != severity_priorities.size() ||
+        available_width <= 0)
+    {
+        return layout;
+    }
+
+    const auto gap = std::max<int32_t>(1, requested_gap);
+    std::vector<size_t> unhealthy_indices;
+    std::vector<size_t> healthy_indices;
+    for (size_t index = 0; index < chunk_widths.size(); ++index)
+    {
+        if (unhealthy[index])
+        {
+            unhealthy_indices.push_back(index);
+        }
+        else
+        {
+            healthy_indices.push_back(index);
+        }
+    }
+    std::stable_sort(
+        unhealthy_indices.begin(), unhealthy_indices.end(),
+        [&](const size_t left, const size_t right) {
+            return severity_priorities[left] < severity_priorities[right];
+        });
+
+    auto indices_width = [&](const std::vector<size_t> &indices) {
+        int32_t width = 0;
+        for (size_t index = 0; index < indices.size(); ++index)
+        {
+            width += chunk_widths[indices[index]];
+            if (index + 1 < indices.size())
+            {
+                width += gap;
+            }
+        }
+        return width;
+    };
+    auto pack_pages = [&](const std::vector<size_t> &indices,
+                          const int32_t width) {
+        std::vector<std::vector<size_t>> pages;
+        std::vector<size_t> page;
+        int32_t used = 0;
+        for (const auto index : indices)
+        {
+            if (chunk_widths[index] > width)
+            {
+                if (!page.empty())
+                {
+                    pages.push_back(page);
+                    page.clear();
+                    used = 0;
+                }
+                pages.push_back({index});
+                continue;
+            }
+            const auto required =
+                chunk_widths[index] + (page.empty() ? 0 : gap);
+            if (!page.empty() && used + required > width)
+            {
+                pages.push_back(page);
+                page.clear();
+                used = 0;
+            }
+            used += chunk_widths[index] + (page.empty() ? 0 : gap);
+            page.push_back(index);
+        }
+        if (!page.empty())
+        {
+            pages.push_back(page);
+        }
+        return pages;
+    };
+
+    const auto unhealthy_width = indices_width(unhealthy_indices);
+    if (!unhealthy_indices.empty() && unhealthy_width > available_width)
+    {
+        layout.unhealthy_overflow = true;
+        layout.pages = pack_pages(unhealthy_indices, available_width);
+        return layout;
+    }
+
+    layout.pinned = unhealthy_indices;
+    auto healthy_width = available_width - unhealthy_width;
+    if (!layout.pinned.empty() && !healthy_indices.empty())
+    {
+        healthy_width -= gap;
+    }
+    if (!healthy_indices.empty() && healthy_width > 0)
+    {
+        layout.pages = pack_pages(healthy_indices, healthy_width);
+    }
+    if (layout.pages.empty())
+    {
+        layout.pages.emplace_back();
+    }
+    return layout;
+}
+
+vis::StatusPageFrame vis::status_page_frame(
+    const size_t page_count, const uint64_t elapsed_ms,
+    const uint32_t hold_ms, const uint32_t transition_ms)
+{
+    StatusPageFrame frame;
+    if (page_count <= 1)
+    {
+        return frame;
+    }
+
+    const auto cycle_ms =
+        static_cast<uint64_t>(hold_ms) + transition_ms;
+    if (cycle_ms == 0)
+    {
+        return frame;
+    }
+    frame.current_page =
+        static_cast<size_t>((elapsed_ms / cycle_ms) % page_count);
+    frame.next_page = (frame.current_page + 1) % page_count;
+    const auto phase_ms = elapsed_ms % cycle_ms;
+    if (transition_ms > 0 && phase_ms >= hold_ms)
+    {
+        frame.transitioning = true;
+        frame.transition_progress =
+            static_cast<double>(phase_ms - hold_ms) / transition_ms;
+        frame.transition_progress =
+            ease_in_out(frame.transition_progress);
+    }
+    return frame;
+}
+
+std::string vis::status_segments_signature(
+    const std::vector<StatusSegment> &segments)
+{
+    std::string signature;
+    for (const auto &segment : segments)
+    {
+        signature.append(segment.series);
+        signature.push_back('\n');
+        signature.append(segment.state_key.empty() ? segment.severity
+                                                   : segment.state_key);
+        signature.push_back('\n');
+        signature.append(segment.severity);
+        signature.push_back('\n');
+        signature.append(segment.full_width ? "full-width" : "inline");
+        signature.push_back('\n');
+    }
+    return signature;
+}
+
+std::string vis::status_family_carousel_signature(
+    const std::vector<StatusSegment> &segments)
+{
+    std::string signature;
+    for (const auto &segment : segments)
+    {
+        signature.append(segment.series);
+        signature.push_back('\n');
+        signature.append(segment.full_width ? "full-width" : "inline");
+        signature.push_back('\n');
+    }
+    return signature;
+}
+
+vis::StatusFamilyRows vis::status_family_rows(
+    const std::vector<StatusSegment> &segments)
+{
+    StatusFamilyRows rows;
+    for (const auto &segment : segments)
+    {
+        auto family_segment = segment;
+        const auto is_workplace =
+            segment.series.compare(0, 3, "mwp") == 0;
+        const auto marker = is_workplace ? 'W' : 'M';
+        auto strip_marker = [&](std::string *label) {
+            if (label != nullptr && label->size() > 1 &&
+                (*label)[0] == marker &&
+                std::isdigit(static_cast<unsigned char>((*label)[1])))
+            {
+                label->erase(0, 1);
+            }
+        };
+        strip_marker(&family_segment.compact);
+        strip_marker(&family_segment.narrow);
+
+        if (is_workplace)
+        {
+            rows.workplace.push_back(family_segment);
+        }
+        else
+        {
+            rows.moodle.push_back(family_segment);
+        }
+    }
+    return rows;
+}
+
 std::wstring vis::OverlayRenderer::utf8_to_wstring(const std::string &text)
 {
     try
@@ -680,15 +1001,31 @@ int32_t vis::OverlayRenderer::glyphs_width(const std::vector<Glyph> &glyphs)
     return width;
 }
 
+vis::FlightOverlayLayout vis::flight_overlay_layout(
+    const vis::Settings &settings,
+    const vis::OverlayMetadata &playback_metadata)
+{
+    const auto shares_playback_row = has_live_playback(playback_metadata);
+    if (shares_playback_row)
+    {
+        return FlightOverlayLayout{
+            static_cast<int32_t>(settings.get_overlay_progress_row()), true};
+    }
+
+    const auto status_rows =
+        lowercase(settings.get_overlay_status_layout()) == "families" ? 2 : 1;
+    const auto row = settings.is_overlay_status_enabled()
+                         ? static_cast<int32_t>(
+                               settings.get_overlay_status_row()) +
+                               status_rows
+                         : 0;
+    return FlightOverlayLayout{row, false};
+}
+
 bool vis::OverlayRenderer::is_live_metadata(
     const vis::OverlayMetadata &metadata)
 {
-    const auto playback = lowercase(metadata.playback);
-    const auto has_playback_payload =
-        !metadata.title.empty() || !metadata.playback.empty() ||
-        metadata.duration_ms > 0 || metadata.position_ms > 0;
-
-    return has_playback_payload && playback != k_playback_stopped;
+    return has_live_playback(metadata);
 }
 
 uint32_t vis::OverlayRenderer::glyph_seed(const RenderedGlyph &glyph)
@@ -1059,22 +1396,18 @@ bool vis::OverlayRenderer::draw_flight_progress(
 
     const auto win_width = NcursesUtils::get_window_width();
     const auto win_height = NcursesUtils::get_window_height();
-    const auto has_marquee =
-        settings.is_overlay_marquee_enabled() && !playback_metadata.title.empty();
-    const auto has_header = has_marquee || settings.is_overlay_status_enabled();
-    const auto row = has_header
-                         ? static_cast<int32_t>(
-                               settings.get_overlay_progress_row())
-                         : 0;
+    const auto layout = flight_overlay_layout(settings, playback_metadata);
+    const auto row = layout.row;
     if (win_width <= 0 || win_height <= 0 || row < 0 || row >= win_height)
     {
         return false;
     }
 
-    auto route_width =
-        has_header ? static_cast<int32_t>(settings.get_overlay_flight_width())
-                   : win_width;
-    if (has_header && route_width <= 0)
+    auto route_width = layout.shares_playback_row
+                           ? static_cast<int32_t>(
+                                 settings.get_overlay_flight_width())
+                           : win_width;
+    if (layout.shares_playback_row && route_width <= 0)
     {
         const auto left = status_left(settings, playback_metadata);
         const auto right = status_right(settings, playback_metadata);
@@ -1112,6 +1445,8 @@ bool vis::OverlayRenderer::draw_status(
     const std::vector<vis::StatusSegment> &segments,
     vis::NcursesWriter *writer)
 {
+    m_status_transition_active = false;
+
     if (!settings.is_overlay_enabled() ||
         !settings.is_overlay_status_enabled() || writer == nullptr ||
         segments.empty())
@@ -1119,9 +1454,300 @@ bool vis::OverlayRenderer::draw_status(
         return false;
     }
 
+    const auto row = static_cast<int32_t>(settings.get_overlay_status_row());
+    const auto status_layout =
+        lowercase(settings.get_overlay_status_layout());
+    if (status_layout == "family-carousel" &&
+        !(segments.size() == 1 && segments.front().full_width))
+    {
+        return draw_status_family_carousel(
+            settings, segments, writer, row,
+            &m_status_family_carousel_state);
+    }
+    if (status_layout != "families" ||
+        (segments.size() == 1 && segments.front().full_width))
+    {
+        if (status_layout == "families")
+        {
+            const auto win_height = NcursesUtils::get_window_height();
+            if (row + 1 >= 0 && row + 1 < win_height)
+            {
+                writer->clear_line(row + 1, 0);
+            }
+        }
+        return draw_status_row(settings, segments, writer, row, L"",
+                               -1, {}, &m_status_single_state);
+    }
+
+    const auto family_rows = status_family_rows(segments);
+    const auto win_width = NcursesUtils::get_window_width();
+    const auto left = configured_or_default(
+        settings.get_overlay_status_boundary_left(),
+        VisConstants::k_default_overlay_status_boundary_left);
+    const auto right = configured_or_default(
+        settings.get_overlay_status_boundary_right(),
+        VisConstants::k_default_overlay_status_boundary_right);
+    const auto shared_content_left = std::min(
+        win_width,
+        std::max(
+            wstring_cell_width(
+                settings.get_overlay_status_moodle_prefix()),
+            wstring_cell_width(
+                settings.get_overlay_status_workplace_prefix())) +
+            1);
+    const auto column_count =
+        std::max(family_rows.moodle.size(), family_rows.workplace.size());
+    std::vector<int32_t> column_widths(column_count, 0);
+    auto measure_columns = [&](const std::vector<StatusSegment> &row_segments) {
+        for (size_t index = 0; index < row_segments.size(); ++index)
+        {
+            const auto label =
+                left + utf8_to_wstring(row_segments[index].compact) + right;
+            column_widths[index] =
+                std::max(column_widths[index], wstring_cell_width(label));
+        }
+    };
+    measure_columns(family_rows.moodle);
+    measure_columns(family_rows.workplace);
+    const auto aligned_columns = aligned_status_columns(
+        column_widths, shared_content_left, win_width);
+
+    const auto win_height = NcursesUtils::get_window_height();
+    auto drew = false;
+    if (family_rows.moodle.empty())
+    {
+        if (row >= 0 && row < win_height)
+        {
+            writer->clear_line(row, 0);
+        }
+    }
+    else
+    {
+        drew = draw_status_row(
+                   settings, family_rows.moodle, writer, row,
+                   settings.get_overlay_status_moodle_prefix(),
+                   shared_content_left, aligned_columns,
+                   &m_status_moodle_state) ||
+               drew;
+    }
+
+    const auto workplace_row = row + 1;
+    if (family_rows.workplace.empty())
+    {
+        if (workplace_row >= 0 && workplace_row < win_height)
+        {
+            writer->clear_line(workplace_row, 0);
+        }
+    }
+    else
+    {
+        drew = draw_status_row(
+                   settings, family_rows.workplace, writer, workplace_row,
+                   settings.get_overlay_status_workplace_prefix(),
+                   shared_content_left, aligned_columns,
+                   &m_status_workplace_state) ||
+               drew;
+    }
+    return drew;
+}
+
+bool vis::OverlayRenderer::draw_status_family_carousel(
+    const vis::Settings &settings,
+    const std::vector<vis::StatusSegment> &segments,
+    vis::NcursesWriter *writer, const int32_t row,
+    StatusPagingState *paging_state)
+{
+    if (!settings.is_overlay_enabled() ||
+        !settings.is_overlay_status_enabled() || writer == nullptr ||
+        paging_state == nullptr || segments.empty())
+    {
+        return false;
+    }
+
     const auto win_width = NcursesUtils::get_window_width();
     const auto win_height = NcursesUtils::get_window_height();
-    const auto row = static_cast<int32_t>(settings.get_overlay_status_row());
+    if (win_width <= 0 || win_height <= 0 || row < 0 || row >= win_height)
+    {
+        return false;
+    }
+
+    struct FamilyChunk
+    {
+        std::vector<Glyph> glyphs;
+        ColorDefinition color;
+        int32_t width;
+    };
+    struct FamilyPage
+    {
+        std::vector<Glyph> prefix_glyphs;
+        std::vector<FamilyChunk> chunks;
+        std::vector<int32_t> columns;
+    };
+
+    const auto left = configured_or_default(
+        settings.get_overlay_status_boundary_left(),
+        VisConstants::k_default_overlay_status_boundary_left);
+    const auto right = configured_or_default(
+        settings.get_overlay_status_boundary_right(),
+        VisConstants::k_default_overlay_status_boundary_right);
+    const auto gap =
+        std::max<int32_t>(1, settings.get_overlay_status_gap());
+    const auto family_rows = status_family_rows(segments);
+    std::vector<FamilyPage> pages;
+
+    auto append_family_pages =
+        [&](const std::vector<StatusSegment> &family_segments,
+            const std::wstring &prefix) {
+            if (family_segments.empty())
+            {
+                return;
+            }
+
+            const auto prefix_glyphs = text_to_glyphs(prefix, nullptr);
+            const auto prefix_width = glyphs_width(prefix_glyphs);
+            const auto content_left = std::min(
+                win_width,
+                prefix_width + (prefix.empty() ? 0 : 1));
+            const auto content_width = win_width - content_left;
+            std::vector<FamilyChunk> chunks;
+            for (const auto &segment : family_segments)
+            {
+                if (segment.compact.empty())
+                {
+                    continue;
+                }
+                auto text =
+                    left + utf8_to_wstring(segment.compact) + right;
+                int32_t width = 0;
+                auto glyphs = text_to_glyphs(text, &width);
+                if (width > content_width && !segment.narrow.empty() &&
+                    segment.narrow != segment.compact)
+                {
+                    text =
+                        left + utf8_to_wstring(segment.narrow) + right;
+                    glyphs = text_to_glyphs(text, &width);
+                }
+                chunks.push_back(FamilyChunk{
+                    glyphs, status_color(settings, segment.severity), width});
+            }
+
+            if (chunks.empty() || content_width <= 0)
+            {
+                pages.push_back(FamilyPage{prefix_glyphs, {}, {}});
+                return;
+            }
+
+            std::vector<int32_t> chunk_widths;
+            chunk_widths.reserve(chunks.size());
+            for (const auto &chunk : chunks)
+            {
+                chunk_widths.push_back(chunk.width);
+            }
+            const auto family_pages =
+                pack_status_pages_with_adaptive_gaps(
+                    chunk_widths, content_width, gap);
+
+            for (const auto &indices : family_pages)
+            {
+                auto chunks_width = 0;
+                for (const auto index : indices)
+                {
+                    chunks_width += chunks[index].width;
+                }
+                const auto spacing = distribute_status_spacing(
+                    indices.size(), content_width - chunks_width);
+                FamilyPage page;
+                page.prefix_glyphs = prefix_glyphs;
+                auto column = content_left;
+                for (size_t position = 0; position < indices.size();
+                     ++position)
+                {
+                    page.columns.push_back(column);
+                    page.chunks.push_back(chunks[indices[position]]);
+                    column += chunks[indices[position]].width;
+                    if (position < spacing.size())
+                    {
+                        column += spacing[position];
+                    }
+                }
+                pages.push_back(page);
+            }
+        };
+
+    append_family_pages(
+        family_rows.moodle,
+        settings.get_overlay_status_moodle_prefix());
+    append_family_pages(
+        family_rows.workplace,
+        settings.get_overlay_status_workplace_prefix());
+    if (pages.empty())
+    {
+        return false;
+    }
+
+    const auto signature = status_family_carousel_signature(segments);
+    if (signature != paging_state->signature)
+    {
+        paging_state->signature = signature;
+        paging_state->started_at = std::chrono::steady_clock::now();
+    }
+
+    writer->clear_line(row, 0);
+    const auto prefix_color = status_color(settings, "info");
+    auto draw_page = [&](const FamilyPage &page, const int32_t offset) {
+        draw_glyphs_clipped(writer, row, offset, prefix_color,
+                            page.prefix_glyphs, 0, win_width, nullptr,
+                            nullptr);
+        for (size_t index = 0; index < page.chunks.size(); ++index)
+        {
+            draw_glyphs_clipped(
+                writer, row, offset + page.columns[index],
+                page.chunks[index].color, page.chunks[index].glyphs, 0,
+                win_width, nullptr, nullptr);
+        }
+    };
+
+    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::steady_clock::now() -
+                          paging_state->started_at)
+                          .count();
+    elapsed_ms = std::max<int64_t>(0, elapsed_ms);
+    const auto frame = status_page_frame(
+        pages.size(), static_cast<uint64_t>(elapsed_ms),
+        settings.get_overlay_status_page_hold_ms(),
+        settings.get_overlay_status_page_transition_ms());
+    m_status_transition_active =
+        m_status_transition_active || frame.transitioning;
+    if (!frame.transitioning)
+    {
+        draw_page(pages[frame.current_page], 0);
+        return true;
+    }
+
+    const auto offset = static_cast<int32_t>(
+        std::lround(frame.transition_progress * win_width));
+    draw_page(pages[frame.current_page], -offset);
+    draw_page(pages[frame.next_page], win_width - offset);
+    return true;
+}
+
+bool vis::OverlayRenderer::draw_status_row(
+    const vis::Settings &settings,
+    const std::vector<vis::StatusSegment> &segments,
+    vis::NcursesWriter *writer, const int32_t row,
+    const std::wstring &prefix, const int32_t content_left_override,
+    const std::vector<int32_t> &aligned_columns,
+    StatusPagingState *paging_state)
+{
+    if (!settings.is_overlay_enabled() ||
+        !settings.is_overlay_status_enabled() || writer == nullptr ||
+        paging_state == nullptr || segments.empty())
+    {
+        return false;
+    }
+
+    const auto win_width = NcursesUtils::get_window_width();
+    const auto win_height = NcursesUtils::get_window_height();
     if (win_width <= 0 || win_height <= 0 || row < 0 || row >= win_height)
     {
         return false;
@@ -1132,6 +1758,8 @@ bool vis::OverlayRenderer::draw_status(
         std::vector<Glyph> glyphs;
         ColorDefinition color;
         int32_t width;
+        bool unhealthy;
+        int32_t severity_priority;
     };
 
     const auto left = configured_or_default(
@@ -1141,104 +1769,250 @@ bool vis::OverlayRenderer::draw_status(
         settings.get_overlay_status_boundary_right(),
         VisConstants::k_default_overlay_status_boundary_right);
 
-    auto make_chunks = [&](const bool narrow) {
-        std::vector<StatusChunk> chunks;
-        for (const auto &segment : segments)
-        {
-            const auto &label = narrow ? segment.narrow : segment.compact;
-            if (label.empty())
-            {
-                continue;
-            }
-            auto text = left + utf8_to_wstring(label) + right;
-            int32_t width = 0;
-            auto glyphs = text_to_glyphs(text, &width);
-            chunks.push_back(StatusChunk{glyphs,
-                                         status_color(settings,
-                                                      segment.severity),
-                                         width});
-        }
-        return chunks;
-    };
-    auto chunks_width = [](const std::vector<StatusChunk> &chunks) {
-        auto width = 0;
-        for (const auto &chunk : chunks)
-        {
-            width += chunk.width;
-        }
-        return width;
-    };
-
-    auto chunks = make_chunks(false);
-    auto total_width = chunks_width(chunks);
-    if (total_width > win_width)
+    const auto signature = status_segments_signature(segments);
+    if (signature != paging_state->signature)
     {
-        chunks = make_chunks(true);
-        total_width = chunks_width(chunks);
-    }
-    if (chunks.empty())
-    {
-        return false;
+        paging_state->signature = signature;
+        paging_state->started_at = std::chrono::steady_clock::now();
     }
 
-    std::string signature;
-    for (const auto &segment : segments)
+    if (segments.size() == 1 && segments.front().full_width)
     {
-        signature.append(segment.text);
-        signature.push_back('\n');
-        signature.append(segment.compact);
-        signature.push_back('\n');
-        signature.append(segment.narrow);
-        signature.push_back('\n');
-        signature.append(segment.severity);
-        signature.push_back('\n');
-    }
-    if (signature != m_status_signature)
-    {
-        m_status_signature = signature;
-        m_status_started_at = std::chrono::steady_clock::now();
+        const auto &segment = segments.front();
+        auto left_glyphs = text_to_glyphs(left, nullptr);
+        auto right_glyphs = text_to_glyphs(right, nullptr);
+        auto label_glyphs = text_to_glyphs(
+            utf8_to_wstring(segment.compact), nullptr);
+        const auto left_width = glyphs_width(left_glyphs);
+        const auto right_width = glyphs_width(right_glyphs);
+        auto label_width = glyphs_width(label_glyphs);
+
+        if (left_width + label_width + right_width > win_width)
+        {
+            label_glyphs = text_to_glyphs(
+                utf8_to_wstring(segment.narrow), nullptr);
+            label_width = glyphs_width(label_glyphs);
+        }
+
+        const auto right_column =
+            std::max(left_width, win_width - right_width);
+        const auto available_label_width = right_column - left_width;
+        const auto label_column = left_width + std::max(
+            0, (available_label_width - label_width) / 2);
+        const auto color = status_color(settings, segment.severity);
+
+        writer->clear_line(row, 0);
+        draw_glyphs(writer, row, 0, color, left_glyphs, win_width, nullptr,
+                    nullptr);
+        draw_glyphs_clipped(writer, row, label_column, color, label_glyphs,
+                            left_width, right_column, nullptr, nullptr);
+        draw_glyphs(writer, row, right_column, color, right_glyphs, win_width,
+                    nullptr, nullptr);
+        return true;
     }
 
     writer->clear_line(row, 0);
-    auto draw_chunks = [&](const int32_t start,
-                           const std::vector<int32_t> &spacing) {
-        auto column = start;
-        for (size_t index = 0; index < chunks.size(); ++index)
+    const auto prefix_glyphs = text_to_glyphs(prefix, nullptr);
+    const auto prefix_width = glyphs_width(prefix_glyphs);
+    const auto natural_content_left =
+        prefix_width + (prefix.empty() ? 0 : 1);
+    const auto requested_content_left =
+        content_left_override >= 0
+            ? std::max(natural_content_left, content_left_override)
+            : natural_content_left;
+    const auto content_left =
+        std::min(win_width, requested_content_left);
+    const auto content_width = win_width - content_left;
+    if (!prefix_glyphs.empty())
+    {
+        const auto color = status_color(settings, "info");
+        draw_glyphs_clipped(writer, row, 0, color, prefix_glyphs, 0,
+                            win_width, nullptr, nullptr);
+    }
+    if (content_width <= 0)
+    {
+        return !prefix.empty();
+    }
+
+    std::vector<StatusChunk> chunks;
+    for (const auto &segment : segments)
+    {
+        if (segment.compact.empty())
         {
-            draw_glyphs_clipped(writer, row, column, chunks[index].color,
-                                chunks[index].glyphs, 0, win_width, nullptr,
-                                nullptr);
+            continue;
+        }
+
+        auto text = left + utf8_to_wstring(segment.compact) + right;
+        int32_t width = 0;
+        auto glyphs = text_to_glyphs(text, &width);
+        if (width > content_width && !segment.narrow.empty() &&
+            segment.narrow != segment.compact)
+        {
+            text = left + utf8_to_wstring(segment.narrow) + right;
+            glyphs = text_to_glyphs(text, &width);
+        }
+
+        const auto severity = lowercase(segment.severity);
+        auto priority = 3;
+        if (severity == "error")
+        {
+            priority = 0;
+        }
+        else if (severity == "warning")
+        {
+            priority = 1;
+        }
+        else if (severity == "stale")
+        {
+            priority = 2;
+        }
+        chunks.push_back(StatusChunk{
+            glyphs, status_color(settings, segment.severity), width,
+            severity != "ok", priority});
+    }
+    if (chunks.empty())
+    {
+        return !prefix.empty();
+    }
+
+    auto total_width = 0;
+    for (const auto &chunk : chunks)
+    {
+        total_width += chunk.width;
+    }
+
+    auto draw_indices = [&](const std::vector<size_t> &indices,
+                            const int32_t start, const int32_t clip_left,
+                            const int32_t clip_right,
+                            const std::vector<int32_t> &spacing) {
+        auto column = start;
+        for (size_t position = 0; position < indices.size(); ++position)
+        {
+            const auto index = indices[position];
+            draw_glyphs_clipped(
+                writer, row, column, chunks[index].color,
+                chunks[index].glyphs, clip_left, clip_right, nullptr, nullptr);
             column += chunks[index].width;
-            if (index < spacing.size())
+            if (position < spacing.size())
             {
-                column += spacing[index];
+                column += spacing[position];
             }
         }
     };
 
-    if (total_width <= win_width)
+    if (aligned_columns.size() >= chunks.size())
     {
-        const auto spacing =
-            distribute_status_spacing(chunks.size(), win_width - total_width);
-        draw_chunks(0, spacing);
+        const std::vector<int32_t> no_spacing;
+        for (size_t index = 0; index < chunks.size(); ++index)
+        {
+            draw_indices({index}, aligned_columns[index], content_left,
+                         win_width, no_spacing);
+        }
+        return true;
+    }
+
+    if (total_width <= content_width)
+    {
+        std::vector<size_t> indices(chunks.size());
+        for (size_t index = 0; index < indices.size(); ++index)
+        {
+            indices[index] = index;
+        }
+        const auto spacing = distribute_status_spacing(
+            chunks.size(), content_width - total_width);
+        draw_indices(indices, content_left, content_left, win_width, spacing);
         return true;
     }
 
     const auto gap =
         std::max<int32_t>(1, settings.get_overlay_status_gap());
-    const auto cycle_width = total_width + gap;
-    const auto elapsed =
-        std::chrono::duration<double>(std::chrono::steady_clock::now() -
-                                      m_status_started_at)
-            .count();
-    const auto offset = static_cast<int32_t>(
-        std::floor(elapsed * settings.get_overlay_status_speed())) %
-                        cycle_width;
-    const std::vector<int32_t> no_spacing;
-    for (auto start = -offset; start < win_width; start += cycle_width)
+    std::vector<int32_t> widths;
+    std::vector<bool> unhealthy;
+    std::vector<int32_t> priorities;
+    widths.reserve(chunks.size());
+    unhealthy.reserve(chunks.size());
+    priorities.reserve(chunks.size());
+    for (const auto &chunk : chunks)
     {
-        draw_chunks(start, no_spacing);
+        widths.push_back(chunk.width);
+        unhealthy.push_back(chunk.unhealthy);
+        priorities.push_back(chunk.severity_priority);
     }
+
+    const auto layout =
+        layout_status_pages(widths, unhealthy, priorities, content_width, gap);
+    if (layout.pages.empty())
+    {
+        return false;
+    }
+
+    auto pinned_width = 0;
+    for (size_t position = 0; position < layout.pinned.size(); ++position)
+    {
+        pinned_width += chunks[layout.pinned[position]].width;
+        if (position + 1 < layout.pinned.size())
+        {
+            pinned_width += gap;
+        }
+    }
+    if (!layout.pinned.empty())
+    {
+        std::vector<int32_t> pinned_spacing(
+            layout.pinned.size() > 1 ? layout.pinned.size() - 1 : 0, gap);
+        draw_indices(layout.pinned, content_left, content_left, win_width,
+                     pinned_spacing);
+    }
+
+    auto page_left = content_left + pinned_width;
+    if (!layout.pinned.empty())
+    {
+        page_left += gap;
+    }
+    page_left = std::min(page_left, win_width);
+    const auto page_width = win_width - page_left;
+    if (page_width <= 0)
+    {
+        return true;
+    }
+
+    auto draw_page = [&](const std::vector<size_t> &page,
+                         const int32_t start) {
+        if (page.empty())
+        {
+            return;
+        }
+        auto width = 0;
+        for (const auto index : page)
+        {
+            width += chunks[index].width;
+        }
+        const auto spacing =
+            distribute_status_spacing(page.size(), page_width - width);
+        draw_indices(page, start, page_left, win_width, spacing);
+    };
+
+    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::steady_clock::now() -
+                          paging_state->started_at)
+                          .count();
+    elapsed_ms = std::max<int64_t>(0, elapsed_ms);
+    const auto frame = status_page_frame(
+        layout.pages.size(), static_cast<uint64_t>(elapsed_ms),
+        settings.get_overlay_status_page_hold_ms(),
+        settings.get_overlay_status_page_transition_ms());
+    m_status_transition_active =
+        m_status_transition_active || frame.transitioning;
+    if (!frame.transitioning)
+    {
+        draw_page(layout.pages[frame.current_page], page_left);
+        return true;
+    }
+
+    const auto offset = static_cast<int32_t>(
+        std::lround(frame.transition_progress * page_width));
+    draw_page(layout.pages[frame.current_page], page_left - offset);
+    draw_page(layout.pages[frame.next_page],
+              page_left + page_width - offset);
     return true;
 }
 

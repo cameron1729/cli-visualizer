@@ -50,6 +50,8 @@ struct StatusSegment
     std::string compact;
     std::string narrow;
     std::string severity;
+    std::string state_key;
+    bool full_width{false};
 
     bool empty() const noexcept
     {

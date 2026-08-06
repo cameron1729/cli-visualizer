@@ -97,7 +97,8 @@ TEST(OverlayMetadataTest, ParsesStatusSegmentJson)
         "\"text\":\"405 4.5.12+ PATCHES STUCK 5d 2h\","
         "\"compact\":\"405 PATCHES!5d2h\","
         "\"narrow\":\"405 PATCHES!5d\","
-        "\"severity\":\"error\"}",
+        "\"severity\":\"error\",\"state_key\":\"patches-stuck\","
+        "\"full_width\":true}",
         &segment);
 
     EXPECT_TRUE(parsed);
@@ -106,6 +107,8 @@ TEST(OverlayMetadataTest, ParsesStatusSegmentJson)
     EXPECT_EQ("405 PATCHES!5d2h", segment.compact);
     EXPECT_EQ("405 PATCHES!5d", segment.narrow);
     EXPECT_EQ("error", segment.severity);
+    EXPECT_EQ("patches-stuck", segment.state_key);
+    EXPECT_TRUE(segment.full_width);
 }
 
 TEST(OverlayMetadataTest, StatusSegmentRequiresText)

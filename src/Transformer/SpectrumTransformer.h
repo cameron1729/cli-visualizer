@@ -23,6 +23,10 @@
 namespace vis
 {
 
+uint64_t idle_render_sleep_milliseconds(
+    uint32_t fps, bool status_transition_active,
+    bool fall_animation_active);
+
 class SpectrumTransformer : public GenericTransformer
 {
   public:

@@ -38,6 +38,30 @@ const uint64_t k_max_silent_runs_before_sleep =
 const uint64_t k_overlay_fall_frame_sleep_milliseconds = 25;
 } // namespace
 
+uint64_t vis::idle_render_sleep_milliseconds(
+    const uint32_t fps, const bool status_transition_active,
+    const bool fall_animation_active)
+{
+    auto sleep_milliseconds = VisConstants::k_silent_sleep_milliseconds;
+
+    if (fall_animation_active)
+    {
+        sleep_milliseconds = std::min(
+            sleep_milliseconds,
+            k_overlay_fall_frame_sleep_milliseconds);
+    }
+
+    if (status_transition_active)
+    {
+        const auto transition_frame_sleep =
+            std::max<uint64_t>(1, 1000ul / std::max<uint32_t>(1, fps));
+        sleep_milliseconds =
+            std::min(sleep_milliseconds, transition_frame_sleep);
+    }
+
+    return sleep_milliseconds;
+}
+
 vis::SpectrumTransformer::SpectrumTransformer(
     const std::shared_ptr<const vis::Settings> settings,
     const std::string &name,
@@ -391,12 +415,10 @@ bool vis::SpectrumTransformer::draw_cached_frame(vis::NcursesWriter *writer,
 
 uint64_t vis::SpectrumTransformer::cached_frame_sleep_milliseconds() const
 {
-    if (m_overlay_renderer.is_fall_animation_active())
-    {
-        return k_overlay_fall_frame_sleep_milliseconds;
-    }
-
-    return VisConstants::k_silent_sleep_milliseconds;
+    return idle_render_sleep_milliseconds(
+        m_settings->get_fps(),
+        m_overlay_renderer.is_status_transition_active(),
+        m_overlay_renderer.is_fall_animation_active());
 }
 
 bool vis::SpectrumTransformer::execute_idle(vis::NcursesWriter *writer)

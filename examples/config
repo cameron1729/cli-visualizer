@@ -85,6 +85,12 @@
 #visualizer.overlay.status.row=0
 #visualizer.overlay.status.speed=4
 #visualizer.overlay.status.gap=4
+#visualizer.overlay.status.page.hold.ms=90000
+#visualizer.overlay.status.page.transition.ms=700
+##Status layout: single, families, or family-carousel.
+#visualizer.overlay.status.layout=single
+#visualizer.overlay.status.moodle.prefix=🎓
+#visualizer.overlay.status.workplace.prefix=🏢
 #visualizer.overlay.status.boundary.left=[
 #visualizer.overlay.status.boundary.right=]
 ##Legacy single-command config is still supported:

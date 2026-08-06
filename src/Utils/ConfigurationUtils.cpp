@@ -115,6 +115,16 @@ const std::string k_overlay_status_speed_setting{
     "visualizer.overlay.status.speed"};
 const std::string k_overlay_status_gap_setting{
     "visualizer.overlay.status.gap"};
+const std::string k_overlay_status_page_hold_ms_setting{
+    "visualizer.overlay.status.page.hold.ms"};
+const std::string k_overlay_status_page_transition_ms_setting{
+    "visualizer.overlay.status.page.transition.ms"};
+const std::string k_overlay_status_layout_setting{
+    "visualizer.overlay.status.layout"};
+const std::string k_overlay_status_moodle_prefix_setting{
+    "visualizer.overlay.status.moodle.prefix"};
+const std::string k_overlay_status_workplace_prefix_setting{
+    "visualizer.overlay.status.workplace.prefix"};
 const std::string k_overlay_status_boundary_left_setting{
     "visualizer.overlay.status.boundary.left"};
 const std::string k_overlay_status_boundary_right_setting{
@@ -924,6 +934,32 @@ void vis::ConfigurationUtils::load_settings(
     settings->set_overlay_status_gap(
         Utils::get(properties, k_overlay_status_gap_setting,
                    VisConstants::k_default_overlay_status_gap));
+
+    settings->set_overlay_status_page_hold_ms(
+        Utils::get(properties, k_overlay_status_page_hold_ms_setting,
+                   VisConstants::k_default_overlay_status_page_hold_ms));
+    validate_setting_is_greater_than_zero(
+        settings->get_overlay_status_page_hold_ms(),
+        k_overlay_status_page_hold_ms_setting);
+
+    settings->set_overlay_status_page_transition_ms(
+        Utils::get(properties, k_overlay_status_page_transition_ms_setting,
+                   VisConstants::k_default_overlay_status_page_transition_ms));
+    validate_setting_is_greater_than_zero(
+        settings->get_overlay_status_page_transition_ms(),
+        k_overlay_status_page_transition_ms_setting);
+
+    settings->set_overlay_status_layout(
+        Utils::get(properties, k_overlay_status_layout_setting,
+                   VisConstants::k_default_overlay_status_layout));
+
+    settings->set_overlay_status_moodle_prefix(
+        Utils::get(properties, k_overlay_status_moodle_prefix_setting,
+                   VisConstants::k_default_overlay_status_moodle_prefix));
+
+    settings->set_overlay_status_workplace_prefix(
+        Utils::get(properties, k_overlay_status_workplace_prefix_setting,
+                   VisConstants::k_default_overlay_status_workplace_prefix));
 
     settings->set_overlay_status_boundary_left(
         Utils::get(properties, k_overlay_status_boundary_left_setting,

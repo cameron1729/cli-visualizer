@@ -137,6 +137,12 @@ static const uint32_t k_default_overlay_status_poll_ms = 60000;
 static const uint32_t k_default_overlay_status_row = 0;
 static const double k_default_overlay_status_speed = 4.0;
 static const uint32_t k_default_overlay_status_gap = 4;
+static const uint32_t k_default_overlay_status_page_hold_ms = 90000;
+static const uint32_t k_default_overlay_status_page_transition_ms = 700;
+static const std::string k_default_overlay_status_layout{"single"};
+static const std::wstring k_default_overlay_status_moodle_prefix{L"\U0001F393"};
+static const std::wstring k_default_overlay_status_workplace_prefix{
+    L"\U0001F3E2"};
 static const std::wstring k_default_overlay_status_boundary_left{L"["};
 static const std::wstring k_default_overlay_status_boundary_right{L"]"};
 static const bool k_default_overlay_marquee_enabled = false;
