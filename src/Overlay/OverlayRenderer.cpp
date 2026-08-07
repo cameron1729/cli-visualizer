@@ -212,6 +212,32 @@ std::wstring status_right(const vis::Settings &settings,
     return L"";
 }
 
+int32_t shared_slot_width(const vis::Settings &settings,
+                          const vis::OverlayMetadata &playback_metadata,
+                          const int32_t configured_width,
+                          const int32_t win_width)
+{
+    if (configured_width > 0)
+    {
+        return std::min(configured_width, win_width);
+    }
+
+    const auto left_width = wstring_cell_width(
+        status_left(settings, playback_metadata));
+    const auto right_width = wstring_cell_width(
+        status_right(settings, playback_metadata));
+    const auto status_gap = left_width > 0 && right_width > 0 ? 1 : 0;
+    const auto min_status_width = left_width + status_gap + right_width;
+    const auto block_width = std::max(
+        min_status_width,
+        static_cast<int32_t>(settings.get_overlay_progress_width()));
+    const auto gap = 2;
+
+    return lowercase(settings.get_overlay_progress_align()) == k_align_right
+               ? win_width - block_width - gap
+               : win_width;
+}
+
 std::wstring progress_bar(const vis::Settings &settings,
                           const vis::OverlayMetadata &metadata,
                           const int32_t cell_width)
@@ -1001,14 +1027,14 @@ int32_t vis::OverlayRenderer::glyphs_width(const std::vector<Glyph> &glyphs)
     return width;
 }
 
-vis::FlightOverlayLayout vis::flight_overlay_layout(
+vis::SharedSlotOverlayLayout vis::shared_slot_overlay_layout(
     const vis::Settings &settings,
     const vis::OverlayMetadata &playback_metadata)
 {
     const auto shares_playback_row = has_live_playback(playback_metadata);
     if (shares_playback_row)
     {
-        return FlightOverlayLayout{
+        return SharedSlotOverlayLayout{
             static_cast<int32_t>(settings.get_overlay_progress_row()), true};
     }
 
@@ -1019,7 +1045,23 @@ vis::FlightOverlayLayout vis::flight_overlay_layout(
                                settings.get_overlay_status_row()) +
                                status_rows
                          : 0;
-    return FlightOverlayLayout{row, false};
+    return SharedSlotOverlayLayout{row, false};
+}
+
+bool vis::baiyan_overlay_visible(
+    const vis::OverlayMetadata &flight_metadata,
+    const vis::OverlayMetadata &baiyan_metadata)
+{
+    return !flight_metadata.flight_active && baiyan_metadata.baiyan_available;
+}
+
+std::string vis::baiyan_overlay_text(
+    const vis::OverlayMetadata &metadata, const bool compact)
+{
+    return metadata.baiyan_available
+               ? (compact ? metadata.baiyan_compact
+                          : metadata.baiyan_expanded)
+               : "";
 }
 
 bool vis::OverlayRenderer::is_live_metadata(
@@ -1396,7 +1438,8 @@ bool vis::OverlayRenderer::draw_flight_progress(
 
     const auto win_width = NcursesUtils::get_window_width();
     const auto win_height = NcursesUtils::get_window_height();
-    const auto layout = flight_overlay_layout(settings, playback_metadata);
+    const auto layout =
+        shared_slot_overlay_layout(settings, playback_metadata);
     const auto row = layout.row;
     if (win_width <= 0 || win_height <= 0 || row < 0 || row >= win_height)
     {
@@ -1407,23 +1450,12 @@ bool vis::OverlayRenderer::draw_flight_progress(
                            ? static_cast<int32_t>(
                                  settings.get_overlay_flight_width())
                            : win_width;
-    if (layout.shares_playback_row && route_width <= 0)
+    if (layout.shares_playback_row)
     {
-        const auto left = status_left(settings, playback_metadata);
-        const auto right = status_right(settings, playback_metadata);
-        const auto left_width = glyphs_width(text_to_glyphs(left, nullptr));
-        const auto right_width = glyphs_width(text_to_glyphs(right, nullptr));
-        const auto status_gap = left_width > 0 && right_width > 0 ? 1 : 0;
-        const auto min_status_width = left_width + status_gap + right_width;
-        const auto configured_bar_width =
-            static_cast<int32_t>(settings.get_overlay_progress_width());
-        const auto block_width =
-            std::max(min_status_width, configured_bar_width);
-        const auto gap = 2;
-        route_width =
-            lowercase(settings.get_overlay_progress_align()) == k_align_right
-                ? win_width - block_width - gap
-                : win_width;
+        route_width = shared_slot_width(
+            settings, playback_metadata,
+            static_cast<int32_t>(settings.get_overlay_flight_width()),
+            win_width);
     }
     route_width = std::max(3, std::min(route_width, win_width));
 
@@ -1437,6 +1469,52 @@ bool vis::OverlayRenderer::draw_flight_progress(
     const auto glyphs = text_to_glyphs(route, nullptr);
     draw_glyphs(writer, row, 0, color, glyphs, win_width, occupied_cells,
                 nullptr);
+    return true;
+}
+
+bool vis::OverlayRenderer::draw_baiyan_status(
+    const vis::Settings &settings, const vis::OverlayMetadata &metadata,
+    const vis::OverlayMetadata &playback_metadata,
+    vis::NcursesWriter *writer,
+    const std::vector<std::vector<uint8_t>> *occupied_cells)
+{
+    if (!settings.is_overlay_enabled() ||
+        !settings.is_overlay_baiyan_enabled() ||
+        !settings.is_overlay_progress_enabled() || writer == nullptr ||
+        !metadata.baiyan_available)
+    {
+        return false;
+    }
+
+    const auto win_width = NcursesUtils::get_window_width();
+    const auto win_height = NcursesUtils::get_window_height();
+    const auto layout =
+        shared_slot_overlay_layout(settings, playback_metadata);
+    if (win_width <= 0 || win_height <= 0 || layout.row < 0 ||
+        layout.row >= win_height)
+    {
+        return false;
+    }
+
+    auto width = layout.shares_playback_row
+                     ? shared_slot_width(
+                           settings, playback_metadata,
+                           static_cast<int32_t>(
+                               settings.get_overlay_baiyan_width()),
+                           win_width)
+                     : win_width;
+    width = std::max(1, std::min(width, win_width));
+    const auto text = baiyan_overlay_text(
+        metadata, layout.shares_playback_row);
+    if (text.empty())
+    {
+        return false;
+    }
+
+    const auto color = writer->to_color_pair(0, 0, settings.get_colors(), true);
+    const auto glyphs = text_to_glyphs(utf8_to_wstring(text), nullptr);
+    draw_glyphs_clipped(writer, layout.row, 0, color, glyphs, 0, width,
+                        occupied_cells, nullptr);
     return true;
 }
 

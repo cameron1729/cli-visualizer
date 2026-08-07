@@ -478,6 +478,47 @@ class Settings
         m_overlay_flight_plane_right = overlay_flight_plane_right;
     }
 
+    bool is_overlay_baiyan_enabled() const noexcept
+    {
+        return m_overlay_baiyan_enabled;
+    }
+
+    void set_overlay_baiyan_enabled(bool overlay_baiyan_enabled)
+    {
+        m_overlay_baiyan_enabled = overlay_baiyan_enabled;
+    }
+
+    const std::string &get_overlay_baiyan_command() const noexcept
+    {
+        return m_overlay_baiyan_command;
+    }
+
+    void set_overlay_baiyan_command(
+        const std::string &overlay_baiyan_command)
+    {
+        m_overlay_baiyan_command = overlay_baiyan_command;
+    }
+
+    uint32_t get_overlay_baiyan_poll_ms() const noexcept
+    {
+        return m_overlay_baiyan_poll_ms;
+    }
+
+    void set_overlay_baiyan_poll_ms(uint32_t overlay_baiyan_poll_ms)
+    {
+        m_overlay_baiyan_poll_ms = overlay_baiyan_poll_ms;
+    }
+
+    uint32_t get_overlay_baiyan_width() const noexcept
+    {
+        return m_overlay_baiyan_width;
+    }
+
+    void set_overlay_baiyan_width(uint32_t overlay_baiyan_width)
+    {
+        m_overlay_baiyan_width = overlay_baiyan_width;
+    }
+
     bool is_overlay_status_enabled() const noexcept
     {
         return m_overlay_status_enabled;
@@ -885,6 +926,10 @@ class Settings
     uint32_t m_overlay_flight_width;
     std::wstring m_overlay_flight_plane_left;
     std::wstring m_overlay_flight_plane_right;
+    bool m_overlay_baiyan_enabled;
+    std::string m_overlay_baiyan_command;
+    uint32_t m_overlay_baiyan_poll_ms;
+    uint32_t m_overlay_baiyan_width;
     bool m_overlay_status_enabled;
     std::string m_overlay_status_command;
     uint32_t m_overlay_status_poll_ms;

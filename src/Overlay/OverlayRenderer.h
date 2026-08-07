@@ -69,14 +69,20 @@ struct StatusFamilyRows
 StatusFamilyRows status_family_rows(
     const std::vector<StatusSegment> &segments);
 
-struct FlightOverlayLayout
+struct SharedSlotOverlayLayout
 {
     int32_t row{0};
     bool shares_playback_row{false};
 };
 
-FlightOverlayLayout flight_overlay_layout(
+SharedSlotOverlayLayout shared_slot_overlay_layout(
     const Settings &settings, const OverlayMetadata &playback_metadata);
+
+bool baiyan_overlay_visible(const OverlayMetadata &flight_metadata,
+                            const OverlayMetadata &baiyan_metadata);
+
+std::string baiyan_overlay_text(const OverlayMetadata &metadata,
+                                bool compact);
 
 class OverlayRenderer
 {
@@ -98,6 +104,12 @@ class OverlayRenderer
                               NcursesWriter *writer,
                               const std::vector<std::vector<uint8_t>>
                                   *occupied_cells = nullptr);
+    bool draw_baiyan_status(const Settings &settings,
+                            const OverlayMetadata &metadata,
+                            const OverlayMetadata &playback_metadata,
+                            NcursesWriter *writer,
+                            const std::vector<std::vector<uint8_t>>
+                                *occupied_cells = nullptr);
     bool draw_status(const Settings &settings,
                      const std::vector<StatusSegment> &segments,
                      NcursesWriter *writer);

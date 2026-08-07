@@ -67,10 +67,12 @@ vis::SpectrumTransformer::SpectrumTransformer(
     const std::string &name,
     std::shared_ptr<vis::OverlaySource> bgv_overlay_source,
     std::shared_ptr<vis::OverlaySource> flight_overlay_source,
+    std::shared_ptr<vis::OverlaySource> baiyan_overlay_source,
     std::shared_ptr<vis::StatusSource> status_source)
     : GenericTransformer(name), m_settings{settings},
       m_bgv_overlay_source{std::move(bgv_overlay_source)},
       m_flight_overlay_source{std::move(flight_overlay_source)},
+      m_baiyan_overlay_source{std::move(baiyan_overlay_source)},
       m_status_source{std::move(status_source)},
       m_fftw_results{0},
       m_fftw_input_left{nullptr}, m_fftw_input_right{nullptr},
@@ -238,8 +240,9 @@ void vis::SpectrumTransformer::execute(pcm_stereo_sample *buffer,
         draw_bars(m_bars_left, m_bars_falloff_left, max_bar_height, true,
                   bar_row_msg, writer, &occupied_cells);
 
-        draw_flight_overlay(writer, &occupied_cells);
         draw_overlay(writer, &occupied_cells);
+        // Keep the shared flight/BaiYan slot above the media fall animation.
+        draw_shared_slot_overlay(writer, &occupied_cells);
         draw_status_overlay(writer);
 
         writer->flush();
@@ -280,22 +283,37 @@ bool vis::SpectrumTransformer::draw_overlay(
                                            occupied_cells);
 }
 
-bool vis::SpectrumTransformer::draw_flight_overlay(
+bool vis::SpectrumTransformer::draw_shared_slot_overlay(
     vis::NcursesWriter *writer,
     const std::vector<std::vector<uint8_t>> *occupied_cells)
 {
-    if (m_flight_overlay_source == nullptr || writer == nullptr)
+    if (writer == nullptr)
     {
         return false;
     }
 
-    const auto flight_metadata = m_flight_overlay_source->get_metadata();
+    const auto flight_metadata = m_flight_overlay_source != nullptr
+                                     ? m_flight_overlay_source->get_metadata()
+                                     : vis::OverlayMetadata{};
+    const auto baiyan_metadata = m_baiyan_overlay_source != nullptr
+                                     ? m_baiyan_overlay_source->get_metadata()
+                                     : vis::OverlayMetadata{};
     const auto playback_metadata = m_bgv_overlay_source != nullptr
                                        ? m_bgv_overlay_source->get_metadata()
                                        : vis::OverlayMetadata{};
-    return m_overlay_renderer.draw_flight_progress(
-        *m_settings, flight_metadata, playback_metadata, writer,
-        occupied_cells);
+    if (flight_metadata.flight_active)
+    {
+        return m_overlay_renderer.draw_flight_progress(
+            *m_settings, flight_metadata, playback_metadata, writer,
+            occupied_cells);
+    }
+    if (baiyan_overlay_visible(flight_metadata, baiyan_metadata))
+    {
+        return m_overlay_renderer.draw_baiyan_status(
+            *m_settings, baiyan_metadata, playback_metadata, writer,
+            occupied_cells);
+    }
+    return false;
 }
 
 bool vis::SpectrumTransformer::draw_status_overlay(
@@ -312,7 +330,7 @@ bool vis::SpectrumTransformer::draw_status_overlay(
 bool vis::SpectrumTransformer::has_drawable_overlay() const
 {
     if ((m_bgv_overlay_source == nullptr && m_flight_overlay_source == nullptr &&
-         m_status_source == nullptr) ||
+         m_baiyan_overlay_source == nullptr && m_status_source == nullptr) ||
         !m_settings->is_overlay_enabled())
     {
         return false;
@@ -323,6 +341,9 @@ bool vis::SpectrumTransformer::has_drawable_overlay() const
                               : vis::OverlayMetadata{};
     const auto flight_metadata = m_flight_overlay_source != nullptr
                                      ? m_flight_overlay_source->get_metadata()
+                                     : vis::OverlayMetadata{};
+    const auto baiyan_metadata = m_baiyan_overlay_source != nullptr
+                                     ? m_baiyan_overlay_source->get_metadata()
                                      : vis::OverlayMetadata{};
     if (m_overlay_renderer.has_fall_animation())
     {
@@ -343,7 +364,8 @@ bool vis::SpectrumTransformer::has_drawable_overlay() const
     return m_settings->is_overlay_progress_enabled() &&
            (metadata.duration_ms > 0 || !metadata.playback.empty() ||
             !metadata.audio_output_kind.empty() ||
-            flight_metadata.flight_active);
+            flight_metadata.flight_active ||
+            baiyan_overlay_visible(flight_metadata, baiyan_metadata));
 }
 
 bool vis::SpectrumTransformer::draw_cached_frame(vis::NcursesWriter *writer,
@@ -405,8 +427,9 @@ bool vis::SpectrumTransformer::draw_cached_frame(vis::NcursesWriter *writer,
     draw_bars(m_bars_left, m_bars_falloff_left, max_bar_height, true,
               bar_row_msg, writer, &occupied_cells);
 
-    draw_flight_overlay(writer, &occupied_cells);
     draw_overlay(writer, &occupied_cells);
+    // Keep the shared flight/BaiYan slot above the media fall animation.
+    draw_shared_slot_overlay(writer, &occupied_cells);
     draw_status_overlay(writer);
 
     writer->flush();

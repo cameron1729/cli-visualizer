@@ -35,6 +35,7 @@ class SpectrumTransformer : public GenericTransformer
         const std::string &name,
         std::shared_ptr<vis::OverlaySource> bgv_overlay_source = nullptr,
         std::shared_ptr<vis::OverlaySource> flight_overlay_source = nullptr,
+        std::shared_ptr<vis::OverlaySource> baiyan_overlay_source = nullptr,
         std::shared_ptr<vis::StatusSource> status_source = nullptr);
 
     SpectrumTransformer(const SpectrumTransformer &other) = delete;
@@ -64,7 +65,7 @@ class SpectrumTransformer : public GenericTransformer
     bool draw_overlay(
         vis::NcursesWriter *writer,
         const std::vector<std::vector<uint8_t>> *occupied_cells = nullptr);
-    bool draw_flight_overlay(
+    bool draw_shared_slot_overlay(
         vis::NcursesWriter *writer,
         const std::vector<std::vector<uint8_t>> *occupied_cells = nullptr);
     bool draw_status_overlay(vis::NcursesWriter *writer);
@@ -80,6 +81,7 @@ class SpectrumTransformer : public GenericTransformer
     const std::shared_ptr<const Settings> m_settings;
     std::shared_ptr<vis::OverlaySource> m_bgv_overlay_source;
     std::shared_ptr<vis::OverlaySource> m_flight_overlay_source;
+    std::shared_ptr<vis::OverlaySource> m_baiyan_overlay_source;
     std::shared_ptr<vis::StatusSource> m_status_source;
     vis::OverlayRenderer m_overlay_renderer;
 

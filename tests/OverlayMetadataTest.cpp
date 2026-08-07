@@ -76,6 +76,26 @@ TEST(OverlayMetadataTest, ParsesFlightProgressJson)
     EXPECT_EQ(257, metadata.flight_track_deg);
 }
 
+TEST(OverlayMetadataTest, ParsesBaiyanStatusJson)
+{
+    vis::OverlayMetadata metadata;
+
+    const auto parsed = vis::parse_overlay_metadata_json(
+        "{\"baiyan_available\":true,\"baiyan_scanned\":true,"
+        "\"baiyan_window_mdls\":14,\"baiyan_window_ok\":10,"
+        "\"baiyan_window_unreviewed\":2,\"baiyan_inbox\":1,"
+        "\"baiyan_awaiting\":3,"
+        "\"baiyan_compact\":\"eye compact\","
+        "\"baiyan_expanded\":\"eye expanded\"}",
+        &metadata);
+
+    EXPECT_TRUE(parsed);
+    EXPECT_TRUE(metadata.baiyan_available);
+    EXPECT_EQ("eye compact", metadata.baiyan_compact);
+    EXPECT_EQ("eye expanded", metadata.baiyan_expanded);
+    EXPECT_FALSE(metadata.empty());
+}
+
 TEST(OverlayMetadataTest, SkipsUnknownDecimalJsonValues)
 {
     vis::OverlayMetadata metadata;

@@ -66,7 +66,11 @@ TEST_F(ConfigurationUtilsTest, NamedOverlaySourcesUseIndependentCommands)
         "visualizer.overlay.bgv.poll.ms=1000\n"
         "visualizer.overlay.flight.enabled=true\n"
         "visualizer.overlay.flight.command=flight-progress --json\n"
-        "visualizer.overlay.flight.poll.ms=15000\n");
+        "visualizer.overlay.flight.poll.ms=15000\n"
+        "visualizer.overlay.baiyan.enabled=true\n"
+        "visualizer.overlay.baiyan.command=baiyan status --json\n"
+        "visualizer.overlay.baiyan.poll.ms=60000\n"
+        "visualizer.overlay.baiyan.width=42\n");
     auto settings = std::make_shared<vis::Settings>(path);
 
     load_settings(settings, path, std::locale(""));
@@ -78,6 +82,11 @@ TEST_F(ConfigurationUtilsTest, NamedOverlaySourcesUseIndependentCommands)
     EXPECT_EQ("flight-progress --json", settings->get_overlay_flight_command());
     EXPECT_EQ(15000, settings->get_overlay_flight_poll_ms());
     EXPECT_EQ(0, settings->get_overlay_flight_width());
+    EXPECT_TRUE(settings->is_overlay_baiyan_enabled());
+    EXPECT_EQ("baiyan status --json",
+              settings->get_overlay_baiyan_command());
+    EXPECT_EQ(60000, settings->get_overlay_baiyan_poll_ms());
+    EXPECT_EQ(42, settings->get_overlay_baiyan_width());
     std::remove(path.c_str());
 }
 

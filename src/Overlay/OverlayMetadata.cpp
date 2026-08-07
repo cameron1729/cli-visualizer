@@ -435,6 +435,27 @@ bool vis::parse_overlay_metadata_json(const std::string &json,
                 return false;
             }
         }
+        else if (key == "baiyan_available")
+        {
+            if (!parse_json_bool(json, &pos, &parsed.baiyan_available))
+            {
+                return false;
+            }
+        }
+        else if (key == "baiyan_compact")
+        {
+            if (!parse_json_string(json, &pos, &parsed.baiyan_compact))
+            {
+                return false;
+            }
+        }
+        else if (key == "baiyan_expanded")
+        {
+            if (!parse_json_string(json, &pos, &parsed.baiyan_expanded))
+            {
+                return false;
+            }
+        }
         else if (!skip_json_value(json, &pos))
         {
             return false;

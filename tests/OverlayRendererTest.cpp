@@ -229,7 +229,7 @@ TEST(OverlayRendererTest, FlightUsesFullRowBelowStatusWithoutPlayback)
     const vis::OverlayMetadata playback_metadata;
 
     const auto layout =
-        vis::flight_overlay_layout(settings, playback_metadata);
+        vis::shared_slot_overlay_layout(settings, playback_metadata);
 
     EXPECT_EQ(1, layout.row);
     EXPECT_FALSE(layout.shares_playback_row);
@@ -245,7 +245,7 @@ TEST(OverlayRendererTest, FlightMovesBelowBothFamilyStatusRows)
     const vis::OverlayMetadata playback_metadata;
 
     const auto layout =
-        vis::flight_overlay_layout(settings, playback_metadata);
+        vis::shared_slot_overlay_layout(settings, playback_metadata);
 
     EXPECT_EQ(2, layout.row);
     EXPECT_FALSE(layout.shares_playback_row);
@@ -260,7 +260,7 @@ TEST(OverlayRendererTest, FamilyCarouselUsesOneStatusRow)
     const vis::OverlayMetadata playback_metadata;
 
     const auto layout =
-        vis::flight_overlay_layout(settings, playback_metadata);
+        vis::shared_slot_overlay_layout(settings, playback_metadata);
 
     EXPECT_EQ(1, layout.row);
     EXPECT_FALSE(layout.shares_playback_row);
@@ -277,7 +277,7 @@ TEST(OverlayRendererTest, FlightSharesProgressRowDuringPlayback)
     playback_metadata.playback = "playing";
 
     const auto layout =
-        vis::flight_overlay_layout(settings, playback_metadata);
+        vis::shared_slot_overlay_layout(settings, playback_metadata);
 
     EXPECT_EQ(2, layout.row);
     EXPECT_TRUE(layout.shares_playback_row);
@@ -294,8 +294,58 @@ TEST(OverlayRendererTest, StoppedPlaybackDoesNotReserveMediaRows)
     playback_metadata.playback = "stopped";
 
     const auto layout =
-        vis::flight_overlay_layout(settings, playback_metadata);
+        vis::shared_slot_overlay_layout(settings, playback_metadata);
 
     EXPECT_EQ(1, layout.row);
     EXPECT_FALSE(layout.shares_playback_row);
+}
+
+TEST(OverlayRendererTest, BaiyanUsesAdaptiveStatusText)
+{
+    vis::OverlayMetadata metadata;
+    metadata.baiyan_available = true;
+    metadata.baiyan_compact =
+        u8"百眼:// 🪟14/✅10/🚨1/💬3/🔎2/🧪9/🎓11/西方無赦🕒1h";
+    metadata.baiyan_expanded =
+        u8"百眼:// 🪟14 / ✅10 / 🚨1 / 💬3 / 🔎2 / 🧪9 / 🎓11 / 西方無赦 🕒1h";
+
+    EXPECT_EQ(u8"百眼:// 🪟14/✅10/🚨1/💬3/🔎2/🧪9/🎓11/西方無赦🕒1h",
+              vis::baiyan_overlay_text(metadata, true));
+    EXPECT_EQ(
+        u8"百眼:// 🪟14 / ✅10 / 🚨1 / 💬3 / 🔎2 / 🧪9 / 🎓11 / 西方無赦 🕒1h",
+        vis::baiyan_overlay_text(metadata, false));
+}
+
+TEST(OverlayRendererTest, BaiyanShowsInitialAndClearStates)
+{
+    vis::OverlayMetadata metadata;
+    metadata.baiyan_available = true;
+    metadata.baiyan_compact = u8"百眼:// ❔/🧪🔄/🎓⚠️11/西方無赦🕒1h";
+    metadata.baiyan_expanded = u8"百眼:// ❔ / 🧪🔄 / 🎓⚠️11 / 西方無赦 🕒1h";
+
+    EXPECT_EQ(u8"百眼:// ❔/🧪🔄/🎓⚠️11/西方無赦🕒1h",
+              vis::baiyan_overlay_text(metadata, true));
+    EXPECT_EQ(u8"百眼:// ❔ / 🧪🔄 / 🎓⚠️11 / 西方無赦 🕒1h",
+              vis::baiyan_overlay_text(metadata, false));
+
+    metadata.baiyan_compact = u8"百眼:// ✨/🧪9/🎓11/西方無赦🕒1h";
+    metadata.baiyan_expanded = u8"百眼:// ✨ / 🧪9 / 🎓11 / 西方無赦 🕒1h";
+    EXPECT_EQ(u8"百眼:// ✨/🧪9/🎓11/西方無赦🕒1h",
+              vis::baiyan_overlay_text(metadata, true));
+    EXPECT_EQ(u8"百眼:// ✨ / 🧪9 / 🎓11 / 西方無赦 🕒1h",
+              vis::baiyan_overlay_text(metadata, false));
+}
+
+TEST(OverlayRendererTest, ActiveFlightSuppressesBaiyan)
+{
+    vis::OverlayMetadata flight;
+    vis::OverlayMetadata baiyan;
+    baiyan.baiyan_available = true;
+
+    EXPECT_TRUE(vis::baiyan_overlay_visible(flight, baiyan));
+    flight.flight_active = true;
+    EXPECT_FALSE(vis::baiyan_overlay_visible(flight, baiyan));
+    flight.flight_active = false;
+    baiyan.baiyan_available = false;
+    EXPECT_FALSE(vis::baiyan_overlay_visible(flight, baiyan));
 }

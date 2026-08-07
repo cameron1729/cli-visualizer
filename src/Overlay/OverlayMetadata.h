@@ -34,12 +34,16 @@ struct OverlayMetadata
     int64_t flight_alt_ft{0};
     int64_t flight_ground_speed_kt{0};
     int64_t flight_track_deg{0};
+    bool baiyan_available{false};
+    std::string baiyan_compact;
+    std::string baiyan_expanded;
 
     bool empty() const noexcept
     {
         return title.empty() && category.empty() && playback.empty() &&
                audio_output_kind.empty() && position_ms == 0 &&
-               duration_ms == 0 && !flight_active && flight_callsign.empty();
+               duration_ms == 0 && !flight_active && flight_callsign.empty() &&
+               !baiyan_available;
     }
 };
 

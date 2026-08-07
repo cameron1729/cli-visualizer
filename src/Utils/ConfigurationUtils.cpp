@@ -103,6 +103,14 @@ const std::string k_overlay_flight_plane_left_setting{
     "visualizer.overlay.flight.plane.left"};
 const std::string k_overlay_flight_plane_right_setting{
     "visualizer.overlay.flight.plane.right"};
+const std::string k_overlay_baiyan_enabled_setting{
+    "visualizer.overlay.baiyan.enabled"};
+const std::string k_overlay_baiyan_command_setting{
+    "visualizer.overlay.baiyan.command"};
+const std::string k_overlay_baiyan_poll_ms_setting{
+    "visualizer.overlay.baiyan.poll.ms"};
+const std::string k_overlay_baiyan_width_setting{
+    "visualizer.overlay.baiyan.width"};
 const std::string k_overlay_status_enabled_setting{
     "visualizer.overlay.status.enabled"};
 const std::string k_overlay_status_command_setting{
@@ -905,6 +913,25 @@ void vis::ConfigurationUtils::load_settings(
     settings->set_overlay_flight_plane_right(
         Utils::get(properties, k_overlay_flight_plane_right_setting,
                    VisConstants::k_default_overlay_flight_plane_right));
+
+    settings->set_overlay_baiyan_enabled(
+        Utils::get(properties, k_overlay_baiyan_enabled_setting,
+                   VisConstants::k_default_overlay_baiyan_enabled));
+
+    settings->set_overlay_baiyan_command(
+        Utils::get(properties, k_overlay_baiyan_command_setting,
+                   VisConstants::k_default_overlay_baiyan_command));
+
+    settings->set_overlay_baiyan_poll_ms(
+        Utils::get(properties, k_overlay_baiyan_poll_ms_setting,
+                   VisConstants::k_default_overlay_baiyan_poll_ms));
+    validate_setting_is_greater_than_zero(
+        settings->get_overlay_baiyan_poll_ms(),
+        k_overlay_baiyan_poll_ms_setting);
+
+    settings->set_overlay_baiyan_width(
+        Utils::get(properties, k_overlay_baiyan_width_setting,
+                   VisConstants::k_default_overlay_baiyan_width));
 
     settings->set_overlay_status_enabled(
         Utils::get(properties, k_overlay_status_enabled_setting,

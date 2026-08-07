@@ -78,6 +78,11 @@
 ##Flight route marker strings selected by target direction.
 #visualizer.overlay.flight.plane.left=⮜
 #visualizer.overlay.flight.plane.right=⮞
+##BaiYan shares the flight slot and is hidden while a flight is active.
+#visualizer.overlay.baiyan.enabled=true
+#visualizer.overlay.baiyan.command=baiyan status --json
+#visualizer.overlay.baiyan.poll.ms=60000
+#visualizer.overlay.baiyan.width=42
 ##Generic one-line status feed. The command emits one flat JSON object per line.
 #visualizer.overlay.status.enabled=true
 #visualizer.overlay.status.command=moodle pipeline status --format ndjson

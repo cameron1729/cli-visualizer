@@ -55,6 +55,13 @@ vis::Settings::Settings(std::string config_path)
           VisConstants::k_default_overlay_flight_plane_left},
       m_overlay_flight_plane_right{
           VisConstants::k_default_overlay_flight_plane_right},
+      m_overlay_baiyan_enabled{
+          VisConstants::k_default_overlay_baiyan_enabled},
+      m_overlay_baiyan_command{
+          VisConstants::k_default_overlay_baiyan_command},
+      m_overlay_baiyan_poll_ms{
+          VisConstants::k_default_overlay_baiyan_poll_ms},
+      m_overlay_baiyan_width{VisConstants::k_default_overlay_baiyan_width},
       m_overlay_status_enabled{VisConstants::k_default_overlay_status_enabled},
       m_overlay_status_command{VisConstants::k_default_overlay_status_command},
       m_overlay_status_poll_ms{
