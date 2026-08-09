@@ -1052,13 +1052,14 @@ bool vis::baiyan_overlay_visible(
     const vis::OverlayMetadata &flight_metadata,
     const vis::OverlayMetadata &baiyan_metadata)
 {
-    return !flight_metadata.flight_active && baiyan_metadata.baiyan_available;
+    return !flight_metadata.flight_active &&
+           baiyan_metadata.baiyan_available && baiyan_metadata.baiyan_scanned;
 }
 
 std::string vis::baiyan_overlay_text(
     const vis::OverlayMetadata &metadata, const bool compact)
 {
-    return metadata.baiyan_available
+    return metadata.baiyan_available && metadata.baiyan_scanned
                ? (compact ? metadata.baiyan_compact
                           : metadata.baiyan_expanded)
                : "";
@@ -1481,7 +1482,7 @@ bool vis::OverlayRenderer::draw_baiyan_status(
     if (!settings.is_overlay_enabled() ||
         !settings.is_overlay_baiyan_enabled() ||
         !settings.is_overlay_progress_enabled() || writer == nullptr ||
-        !metadata.baiyan_available)
+        !metadata.baiyan_available || !metadata.baiyan_scanned)
     {
         return false;
     }

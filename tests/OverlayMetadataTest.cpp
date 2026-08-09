@@ -91,6 +91,7 @@ TEST(OverlayMetadataTest, ParsesBaiyanStatusJson)
 
     EXPECT_TRUE(parsed);
     EXPECT_TRUE(metadata.baiyan_available);
+    EXPECT_TRUE(metadata.baiyan_scanned);
     EXPECT_EQ("eye compact", metadata.baiyan_compact);
     EXPECT_EQ("eye expanded", metadata.baiyan_expanded);
     EXPECT_FALSE(metadata.empty());
